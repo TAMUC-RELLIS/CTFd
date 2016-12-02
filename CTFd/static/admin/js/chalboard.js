@@ -135,7 +135,18 @@ function loadfiles(chal){
         for(x=0; x<files.length; x++){
             filename = files[x].file.split('/')
             filename = filename[filename.length - 1]
-            $('#current-files').append('<div class="row" style="margin:5px 0px;">'+'<a style="position:relative;top:10px;" href='+script_root+'/files/'+files[x].file+'>'+filename+'</a><a href="#" class="btn btn-danger" onclick="deletefile('+chal+','+files[x].id+', $(this))" value="'+files[x].id+'" style="float:right;">Delete</a></div>')
+            var elem = $('<div class="row" style="margin:5px 0px;">');
+            elem.append('<a style="position:relative;top:10px;" href='+script_root+'/files/'+files[x].file+'>'+filename+'</a>');
+
+            var form_group = $('<div class="form-group" style="float: right">');
+            var dropdown = $('<select class="form-control" id="instance_type" name="instance_type" style="float:left">');
+            dropdown.append('<option>Static</option>');
+            dropdown.append('<option>Template</option>');
+            dropdown.append('<option>Placeholder</option>');
+            form_group.append(dropdown);
+            form_group.append('<a href="#" class="btn btn-danger" onclick="deletefile('+chal+','+files[x].id+', $(this))" value="'+files[x].id+'" style="float:right;">Delete</a>');
+            elem.append(form_group);
+            $('#current-files').append(elem);
         }
     });
 }
@@ -272,7 +283,7 @@ $('#create-instance').click(function(e){
 
     elem.append($("<div class='form-group col-md-6'>").append($("<input class='current-instance form-control' type='text' placeholder='Template parameters (JSON)'>")));
 
-    var buttons = $('<div class="col-md-6 form-group">');
+    var buttons = $('<div class="form-group">');
     buttons.append('<a href="#" onclick="" class="btn btn-primary instance-files-button">Files</a>');
     buttons.append('<a href="#" onclick="" class="btn btn-danger instance-remove-button">Remove</a>');
     elem.append(buttons);

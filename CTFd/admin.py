@@ -279,7 +279,7 @@ def new_container():
 @admins_only
 def admin_chals():
     if request.method == 'POST':
-        chals = Challenges.query.add_columns('id', 'name', 'value', 'description', 'category', 'hidden').order_by(Challenges.value).all()
+        chals = Challenges.query.add_columns('id', 'name', 'value', 'description', 'category', 'hidden', 'instanced').order_by(Challenges.value).all()
 
         teams_with_points = db.session.query(Solves.teamid).join(Teams).filter(
             Teams.banned == False).group_by(Solves.teamid).count()
