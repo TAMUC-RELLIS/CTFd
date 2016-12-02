@@ -111,6 +111,7 @@ class Files(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     chal = db.Column(db.Integer, db.ForeignKey('challenges.id'))
     instance = db.Column(db.Integer, db.ForeignKey('instances.id'))
+    instance_type = db.Column(db.Integer)
     location = db.Column(db.Text)
 
     def __init__(self, chal, location):
