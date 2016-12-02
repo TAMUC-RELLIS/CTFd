@@ -38,6 +38,11 @@ function loadchal(id, update) {
     if (obj.hidden) {
         $('.chal-hidden').prop('checked', true);
     }
+    else update_instance_ctrls();
+    $('.chal-instanced').prop('checked', false);
+    if (obj.instanced) {
+        $('.chal-instanced').prop('checked', true);
+    }
     //$('#update-challenge .chal-delete').attr({
     //    'href': '/admin/chal/close/' + (id + 1)
     //})
@@ -139,7 +144,7 @@ function loadfiles(chal){
             elem.append('<a style="position:relative;top:10px;" href='+script_root+'/files/'+files[x].file+'>'+filename+'</a>');
 
             var form_group = $('<div class="form-group" style="float: right">');
-            var dropdown = $('<select class="form-control" id="instance_type" name="instance_type" style="float:left">');
+            var dropdown = $('<select class="form-control instance-ctrl" id="instance_type" name="instance_type" style="float:left">');
             dropdown.append('<option>Static</option>');
             dropdown.append('<option>Template</option>');
             dropdown.append('<option>Placeholder</option>');
@@ -290,6 +295,15 @@ $('#create-instance').click(function(e){
 
     $('#current-instances').append(elem);
 });
+
+function update_instance_ctrls(){
+    if($('.chal-instanced').is(":checked")){  
+        $(".instance-ctrl").show();
+    }
+    else {
+        $(".instance-ctrl").hide();
+    }
+}
 
 $(function(){
     loadchals();
