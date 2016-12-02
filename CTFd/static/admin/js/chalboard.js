@@ -265,6 +265,21 @@ $('#create-key').click(function(e){
     $('#current-keys').append(elem);
 });
 
+$('#create-instance').click(function(e){
+    var amt = $('#current-instances input[type=text]').length
+
+    var elem = $('<div class="col-md-12 row">');
+
+    elem.append($("<div class='form-group col-md-6'>").append($("<input class='current-instance form-control' type='text' placeholder='Template parameters (JSON)'>")));
+
+    var buttons = $('<div class="col-md-6 form-group">');
+    buttons.append('<a href="#" onclick="" class="btn btn-primary instance-files-button">Files</a>');
+    buttons.append('<a href="#" onclick="" class="btn btn-danger instance-remove-button">Remove</a>');
+    elem.append(buttons);
+
+    $('#current-instances').append(elem);
+});
+
 $(function(){
     loadchals();
 })
