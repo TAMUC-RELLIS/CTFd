@@ -62,6 +62,7 @@ class Challenges(db.Model):
     category = db.Column(db.String(80))
     flags = db.Column(db.Text)
     hidden = db.Column(db.Boolean)
+    instanced = db.Column(db.Boolean)
 
     def __init__(self, name, description, value, category, flags):
         self.name = name
@@ -109,6 +110,7 @@ class Tags(db.Model):
 class Files(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     chal = db.Column(db.Integer, db.ForeignKey('challenges.id'))
+    instance = db.Column(db.Integer, db.ForeignKey('instances.id'))
     location = db.Column(db.Text)
 
     def __init__(self, chal, location):
@@ -117,6 +119,19 @@ class Files(db.Model):
 
     def __repr__(self):
         return "<File {0} for challenge {1}>".format(self.location, self.chal)
+
+
+class Instances(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    chal = db.Column(db.Integer, db.ForeignKey('challenges.id'))
+    params = db.Column(db.Text)
+
+    def __init__(self, chal, params):
+        self.chal = chal
+        self.params = params
+
+    def __repr__(self):
+        return "<Instance {0} for challenge {1}>".format(self.params, self.chal)
 
 
 class Keys(db.Model):
