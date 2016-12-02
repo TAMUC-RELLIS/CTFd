@@ -300,6 +300,7 @@ def admin_chals():
                 'description': x.description,
                 'category': x.category,
                 'hidden': x.hidden,
+                'instanced': x.instanced,
                 'percentage_solved': percentage
             })
 
@@ -798,6 +799,10 @@ def admin_create_chal():
         chal.hidden = True
     else:
         chal.hidden = False
+    if 'instanced' in request.form:
+        chal.instanced = True
+    else:
+        chal.instanced = False
     db.session.add(chal)
     db.session.commit()
 
@@ -838,6 +843,7 @@ def admin_update_chal():
     challenge.value = request.form['value']
     challenge.category = request.form['category']
     challenge.hidden = 'hidden' in request.form
+    challenge.instanced = 'instanced' in request.form
     db.session.add(challenge)
     db.session.commit()
     db.session.close()

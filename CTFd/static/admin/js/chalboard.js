@@ -38,11 +38,11 @@ function loadchal(id, update) {
     if (obj.hidden) {
         $('.chal-hidden').prop('checked', true);
     }
-    else update_instance_ctrls();
     $('.chal-instanced').prop('checked', false);
     if (obj.instanced) {
         $('.chal-instanced').prop('checked', true);
     }
+    else update_instance_ctrls();
     //$('#update-challenge .chal-delete').attr({
     //    'href': '/admin/chal/close/' + (id + 1)
     //})
