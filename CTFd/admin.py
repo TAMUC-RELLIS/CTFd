@@ -336,6 +336,7 @@ def admin_keys(chalid):
         db.session.close()
         return '1'
 
+#TODO: Add checking for valid JSON in input fields
 @admin.route('/admin/instances/<chalid>', methods=['POST', 'GET'])
 @admins_only
 def admin_instances(chalid):

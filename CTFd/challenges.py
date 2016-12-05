@@ -84,10 +84,8 @@ def chals():
                 name = x[2]
                 desc = x[4]
                 if params:
-                    name_template = Template(name)
-                    name = name_template.render(params)
-                    desc_template = Template(desc)
-                    desc = desc_template.render(params)
+                    name = Template(name).render(params)
+                    desc = Template(desc).render(params)
                 json['game'].append({'id':x[1], 'name':name, 'value':x[3], 'description':desc, 'category':x[5], 'files':files, 'tags':tags})
             else:
                 json['game'].append({'id':x[1], 'name':x[2], 'value':x[3], 'description':x[4], 'category':x[5], 'files':files, 'tags':tags})
@@ -225,8 +223,14 @@ def chal(chalid):
                     'message': "You have 0 tries remaining"
                 })
 
+            params = {}
+            if chal.instanced:
+                params = choose_instance_params(chal.id)
+
             for x in keys:
-                if x['type'] == 0: # static key
+                if chal.instanced:
+                    x['flag'] = Template(x['flag']).render(params)
+                if x['type'] == 0: #static key
                     print(x['flag'], key.strip().lower())
                     if x['flag'] and x['flag'].strip().lower() == key.strip().lower():
                         if ctftime():
