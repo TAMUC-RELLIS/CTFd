@@ -337,7 +337,7 @@ function buildinstance(params="", x=-1){
 
     var buttons = $('<div class="form-group">');
     buttons.append('<a href="#" onclick="" class="btn btn-primary instance-files-button">Files</a>');
-    buttons.append('<a href="#" onclick="" class="btn btn-danger instance-remove-button">Remove</a>');
+    buttons.append('<a href="#" onclick="$(this).parent().parent().remove()" class="btn btn-danger instance-remove-button">Remove</a>');
     elem.append(buttons);
     return elem;
 }
