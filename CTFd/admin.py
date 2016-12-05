@@ -9,7 +9,7 @@ from sqlalchemy.sql import not_
 from CTFd.utils import admins_only, is_admin, unix_time, get_config, \
     set_config, sendmail, rmdir, create_image, delete_image, run_image, container_status, container_ports, \
     container_stop, container_start, get_themes, cache, upload_file
-from CTFd.models import db, Teams, Solves, Awards, Containers, Challenges, WrongKeys, Keys, Tags, Files, Tracking, Pages, Config, DatabaseError
+from CTFd.models import db, Teams, Solves, Awards, Containers, Challenges, WrongKeys, Keys, Tags, Files, Instances, Tracking, Pages, Config, DatabaseError
 from CTFd.scoreboard import get_standings
 
 admin = Blueprint('admin', __name__)
@@ -332,6 +332,25 @@ def admin_keys(chalid):
 
         chal.flags = json_data
 
+        db.session.commit()
+        db.session.close()
+        return '1'
+
+@admin.route('/admin/instances/<chalid>', methods=['POST', 'GET'])
+@admins_only
+def admin_instances(chalid):
+    if request.method == 'GET':
+        instances = Instances.query.filter_by(chal=chalid).all()
+        json_data = {'instances':[]}
+        for i, x in enumerate(instances):
+            json_data['instances'].append({'id':x.id, 'params':x.params, 'chal':x.chal})
+        return jsonify(json_data)
+    elif request.method == 'POST':
+        instances = Instances.query.filter_by(chal=chalid).delete()
+        updatedparams = request.form.getlist('params_list[]')
+        for i, params in enumerate(updatedparams):
+            instance = Instances(chalid, params)
+            db.session.add(instance)
         db.session.commit()
         db.session.close()
         return '1'

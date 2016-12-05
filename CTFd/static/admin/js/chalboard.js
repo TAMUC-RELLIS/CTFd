@@ -34,15 +34,17 @@ function loadchal(id, update) {
     $('.chal-value').val(obj.value);
     $('.chal-category').val(obj.category);
     $('.chal-id').val(obj.id);
-    $('.chal-hidden').prop('checked', false);
-    if (obj.hidden) {
-        $('.chal-hidden').prop('checked', true);
+    if(!update){
+        $('.chal-hidden').prop('checked', false);
+        if (obj.hidden) {
+            $('.chal-hidden').prop('checked', true);
+        }
+        $('.chal-instanced').prop('checked', false);
+        if (obj.instanced) {
+            $('.chal-instanced').prop('checked', true);
+        }
+        update_instance_ctrls();
     }
-    $('.chal-instanced').prop('checked', false);
-    if (obj.instanced) {
-        $('.chal-instanced').prop('checked', true);
-    }
-    else update_instance_ctrls();
     //$('#update-challenge .chal-delete').attr({
     //    'href': '/admin/chal/close/' + (id + 1)
     //})
@@ -168,6 +170,29 @@ function deletefile(chal, file, elem){
     });
 }
 
+function loadinstances(chal){
+    $.get(script_root + '/admin/instances/' + chal, function(data){
+        $('#instances-chal').val(chal);
+        instances = $.parseJSON(JSON.stringify(data));
+        instances = instances['instances'];
+        $('#current-instances').empty();
+        for(x=0; x<instances.length; x++){
+            var elem = buildinstance(instances[x].params, x);
+            $('#current-instances').append(elem);
+        }
+    });
+}
+
+function updateinstances(){
+    params_list = [];
+    chal = $('#instances-chal').val()
+    $('.current-instance').each(function(){
+        params_list.push($(this).val());
+    })
+    $.post(script_root + '/admin/instances/'+chal, {'params_list':params_list, 'nonce': $('#nonce').val()})
+    loadchal(chal, true)
+    $('#update-instances').modal('hide');
+}
 
 function loadchals(){
     $('#challenges').empty();
@@ -196,6 +221,7 @@ function loadchals(){
             loadkeys(this.value);
             loadtags(this.value);
             loadfiles(this.value);
+            loadinstances(this.value);
         });
 
         $('.create-challenge').click(function (e) {
@@ -213,12 +239,17 @@ $('#submit-key').click(function (e) {
 
 $('#submit-keys').click(function (e) {
     e.preventDefault();
-    updatekeys()
+    updatekeys();
 });
 
 $('#submit-tags').click(function (e) {
     e.preventDefault();
-    updatetags()
+    updatetags();
+});
+
+$('#submit-instances').click(function (e) {
+    e.preventDefault();
+    updateinstances();
 });
 
 $('#delete-chal form').submit(function(e){
@@ -282,17 +313,7 @@ $('#create-key').click(function(e){
 });
 
 $('#create-instance').click(function(e){
-    var amt = $('#current-instances input[type=text]').length
-
-    var elem = $('<div class="col-md-12 row">');
-
-    elem.append($("<div class='form-group col-md-6'>").append($("<input class='current-instance form-control' type='text' placeholder='Template parameters (JSON)'>")));
-
-    var buttons = $('<div class="form-group">');
-    buttons.append('<a href="#" onclick="" class="btn btn-primary instance-files-button">Files</a>');
-    buttons.append('<a href="#" onclick="" class="btn btn-danger instance-remove-button">Remove</a>');
-    elem.append(buttons);
-
+    elem = buildinstance();
     $('#current-instances').append(elem);
 });
 
@@ -303,6 +324,22 @@ function update_instance_ctrls(){
     else {
         $(".instance-ctrl").hide();
     }
+}
+
+function buildinstance(params="", x=-1){
+    if(x==-1){
+        x = $('#current-instances input[type=text]').length
+    }
+
+    var elem = $('<div class="col-md-12 row">');
+
+    elem.append($("<div class='form-group col-md-6'>").append($("<input class='current-instance form-control' type='text' placeholder='Template parameters (JSON)'>").val(params)));
+
+    var buttons = $('<div class="form-group">');
+    buttons.append('<a href="#" onclick="" class="btn btn-primary instance-files-button">Files</a>');
+    buttons.append('<a href="#" onclick="" class="btn btn-danger instance-remove-button">Remove</a>');
+    elem.append(buttons);
+    return elem;
 }
 
 $(function(){
