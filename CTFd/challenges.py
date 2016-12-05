@@ -1,7 +1,11 @@
-import json
 import logging
 import re
 import time
+
+from flask import current_app as app, render_template, request, redirect, abort, jsonify, json as json_mod, url_for, session, Blueprint
+
+from CTFd.utils import ctftime, view_after_ctf, authed, unix_time, get_kpm, user_can_view_challenges, is_admin, get_config, get_ip, is_verified, ctf_started, ctf_ended, ctf_name
+from CTFd.models import db, Challenges, Files, Solves, WrongKeys, Keys, Instances, Tags, Teams, Awards
 
 from flask import render_template, request, redirect, jsonify, url_for, session, Blueprint
 from sqlalchemy.sql import or_
@@ -9,7 +13,27 @@ from sqlalchemy.sql import or_
 from CTFd.utils import ctftime, view_after_ctf, authed, unix_time, get_kpm, user_can_view_challenges, is_admin, get_config, get_ip, is_verified, ctf_started, ctf_ended, ctf_name
 from CTFd.models import db, Challenges, Files, Solves, WrongKeys, Tags, Teams, Awards
 
+from jinja2 import Template
+from binascii import crc32
+
 challenges = Blueprint('challenges', __name__)
+
+def hash_choice(items, keys):
+     code = ""
+     for k in keys:
+         code += str(crc32(str(k)))
+     index = crc32(code) % len(items)
+     return items[index]
+
+def choose_instance_params(chalid=0):
+    instances = Instances.query.add_columns('id', 'params').filter_by(chal=chalid).all()
+    params = {}
+    if instances:
+        instances = sorted(instances, key=lambda e: e[1])
+        hash_keys = [session.get('id'), chalid]
+        chosen_inst = hash_choice(instances, hash_keys)
+        params = json_mod.loads(chosen_inst[2])
+    return params
 
 
 @challenges.route('/challenges', methods=['GET'])
@@ -49,13 +73,24 @@ def chals():
             else:
                 return redirect(url_for('views.static_html'))
     if user_can_view_challenges() and (ctf_started() or is_admin()):
-        chals = Challenges.query.filter(or_(Challenges.hidden != True, Challenges.hidden == None)).add_columns('id', 'name', 'value', 'description', 'category').order_by(Challenges.value).all()
+        chals = Challenges.query.filter(or_(Challenges.hidden != True, Challenges.hidden == None)).add_columns('id', 'name', 'value', 'description', 'category', 'instanced').order_by(Challenges.value).all()
 
         json = {'game': []}
         for x in chals:
             tags = [tag.tag for tag in Tags.query.add_columns('tag').filter_by(chal=x[1]).all()]
             files = [str(f.location) for f in Files.query.filter_by(chal=x.id).all()]
-            json['game'].append({'id': x[1], 'name': x[2], 'value': x[3], 'description': x[4], 'category': x[5], 'files': files, 'tags': tags})
+            if x[6]: # If instanced
+                params = choose_instance_params(x[1]); 
+                name = x[2]
+                desc = x[4]
+                if params:
+                    name_template = Template(name)
+                    name = name_template.render(params)
+                    desc_template = Template(desc)
+                    desc = desc_template.render(params)
+                json['game'].append({'id':x[1], 'name':name, 'value':x[3], 'description':desc, 'category':x[5], 'files':files, 'tags':tags})
+            else:
+                json['game'].append({'id':x[1], 'name':x[2], 'value':x[3], 'description':x[4], 'category':x[5], 'files':files, 'tags':tags})
 
         db.session.close()
         return jsonify(json)

@@ -146,11 +146,11 @@ function loadfiles(chal){
             elem.append('<a style="position:relative;top:10px;" href='+script_root+'/files/'+files[x].file+'>'+filename+'</a>');
 
             var form_group = $('<div class="form-group" style="float: right">');
-            var dropdown = $('<select class="form-control instance-ctrl" id="instance_type" name="instance_type" style="float:left">');
+            /*var dropdown = $('<select class="form-control instance-ctrl" id="instance_type" name="instance_type" style="float:left">');
             dropdown.append('<option>Static</option>');
             dropdown.append('<option>Template</option>');
             dropdown.append('<option>Placeholder</option>');
-            form_group.append(dropdown);
+            form_group.append(dropdown);*/
             form_group.append('<a href="#" class="btn btn-danger" onclick="deletefile('+chal+','+files[x].id+', $(this))" value="'+files[x].id+'" style="float:right;">Delete</a>');
             elem.append(form_group);
             $('#current-files').append(elem);
@@ -336,7 +336,7 @@ function buildinstance(params="", x=-1){
     elem.append($("<div class='form-group col-md-6'>").append($("<input class='current-instance form-control' type='text' placeholder='Template parameters (JSON)'>").val(params)));
 
     var buttons = $('<div class="form-group">');
-    buttons.append('<a href="#" onclick="" class="btn btn-primary instance-files-button">Files</a>');
+    //buttons.append('<a href="#" onclick="" class="btn btn-primary instance-files-button">Files</a>');
     buttons.append('<a href="#" onclick="$(this).parent().parent().remove()" class="btn btn-danger instance-remove-button">Remove</a>');
     elem.append(buttons);
     return elem;
