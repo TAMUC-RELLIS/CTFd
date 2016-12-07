@@ -841,6 +841,7 @@ def admin_delete_chal():
     WrongKeys.query.filter_by(chalid=challenge.id).delete()
     Solves.query.filter_by(chalid=challenge.id).delete()
     Keys.query.filter_by(chal=challenge.id).delete()
+    Instances.query.filter_by(chal=challenge.id).delete()
     files = Files.query.filter_by(chal=challenge.id).all()
     Files.query.filter_by(chal=challenge.id).delete()
     for file in files:
