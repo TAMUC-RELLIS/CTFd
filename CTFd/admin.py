@@ -347,9 +347,18 @@ def admin_instances(chalid):
             json_data['instances'].append({'id':x.id, 'params':x.params, 'chal':x.chal})
         return jsonify(json_data)
     elif request.method == 'POST':
-        instances = Instances.query.filter_by(chal=chalid).delete()
-        updatedparams = request.form.getlist('params_list[]')
-        for i, params in enumerate(updatedparams):
+        currinstances = Instances.query.filter_by(chal=chalid).order_by(Instances.id.asc()).all()
+        req_instances = request.form.getlist('instances[]', lambda x: json.loads(x));
+        updatedinstances = dict([(int(x['id']), x['params']) for x in req_instances])
+        #Update any instances with new parameters if their ID is in the DB
+        for instance in currinstances:
+            updatedparams = updatedinstances.pop(instance.id, None)
+            if updatedparams:
+                instance.params = updatedparams
+            else:
+                db.session.delete(instance)
+        # Create new instances (with new IDs) if their ID is not in the DB
+        for params in updatedinstances.values(): 
             instance = Instances(chalid, params)
             db.session.add(instance)
         db.session.commit()
