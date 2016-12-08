@@ -331,10 +331,10 @@ function buildinstance(params="", x=null){
     }
     var elem = $('<div class="col-md-12 row">');
 
-    elem.append($("<div class='form-group current-instance col-md-6'>").append($("<input class='instance-params form-control' type='text' placeholder='Template parameters (JSON)'>").val(params)).append($("<input class='instance-id' type='hidden'>").val(x)));
+    elem.append($("<div class='form-group current-instance col-md-8'>").append($("<input class='instance-params form-control' type='text' placeholder='Template parameters (JSON)'>").val(params)).append($("<input class='instance-id' type='hidden'>").val(x)));
 
     var buttons = $('<div class="form-group">');
-    buttons.append('<a href="#" onclick="$(this).parent().parent().remove()" class="btn btn-danger instance-remove-button">Remove</a>');
+    buttons.append('<a href="#" onclick="$(this).parent().parent().remove()" class="btn btn-danger pull-right instance-remove-button">Remove</a>');
     elem.append(buttons);
     return elem;
 }
