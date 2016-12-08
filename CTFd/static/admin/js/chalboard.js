@@ -140,14 +140,7 @@ function loadfiles(chal){
         files = files['files']
         $('#current-files').empty()
         for(x=0; x<files.length; x++){
-            filename = files[x].file.split('/')
-            filename = filename[filename.length - 1]
-            var elem = $('<div class="row" style="margin:5px 0px;">');
-            elem.append('<a style="position:relative;top:10px;" href='+script_root+'/files/'+files[x].file+'>'+filename+'</a>');
-
-            var form_group = $('<div class="form-group" style="float: right">');
-            form_group.append('<a href="#" class="btn btn-danger" onclick="deletefile('+chal+','+files[x].id+', $(this))" value="'+files[x].id+'" style="float:right;">Delete</a>');
-            elem.append(form_group);
+            var elem = buildfile(files[x].file, files[x].id, chal);
             $('#current-files').append(elem);
         }
     });
@@ -323,6 +316,18 @@ function update_instance_ctrls(){
     else {
         $(".instance-ctrl").hide();
     }
+}
+
+function buildfile(filepath, id, chal){
+    filename = filepath.split('/')
+    filename = filename[filename.length - 1]
+    var elem = $('<div class="row" style="margin:5px 0px;">');
+    elem.append('<a style="position:relative;top:10px;" href='+script_root+'/files/'+filepath+'>'+filename+'</a>');
+
+    var form_group = $('<div class="form-group" style="float: right">');
+    form_group.append('<a href="#" class="btn btn-danger" onclick="deletefile('+chal+','+id+', $(this))" value="'+id+'" style="float:right;">Delete</a>');
+    elem.append(form_group);
+    return elem;
 }
 
 function buildinstance(params="", x=null){
