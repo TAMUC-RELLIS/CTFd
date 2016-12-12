@@ -154,7 +154,7 @@ function deletefile(chal, file, elem){
         'file': file
     }, function (data){
         if (data == "1") {
-            elem.parent().remove()
+            elem.parent().parent().remove()
         }
     });
 }
