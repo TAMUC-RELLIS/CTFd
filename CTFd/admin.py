@@ -362,6 +362,7 @@ def admin_instances(chalid):
                     db.session.add(filemapping)
 
             else:
+                FileMappings.query.filter_by(instance=instance.id).delete()
                 db.session.delete(instance)
         # Create new instances (with new IDs) if their ID is not in the DB
         for newinst in updatedinstances.values(): 
@@ -419,9 +420,9 @@ def admin_files(chalid):
     if request.method == 'POST':
         if request.form['method'] == "delete":
             f = Files.query.filter_by(id=request.form['file']).first_or_404()
-            upload_folder = os.path.join(app.root_path, app.config['UPLOAD_FOLDER'])
-            if os.path.exists(os.path.join(upload_folder, f.location)): # Some kind of os.path.isfile issue on Windows...
-                os.unlink(os.path.join(upload_folder, f.location))
+            if os.path.exists(os.path.join(app.root_path, 'uploads', f.location)): # Some kind of os.path.isfile issue on Windows...
+                os.unlink(os.path.join(app.root_path, 'uploads', f.location))
+            FileMappings.query.filter_by(file=f.id).delete()
             db.session.delete(f)
             db.session.commit()
             db.session.close()
@@ -856,10 +857,14 @@ def admin_create_chal():
 @admin.route('/admin/chal/delete', methods=['POST'])
 @admins_only
 def admin_delete_chal():
+
     challenge = Challenges.query.filter_by(id=request.form['id']).first_or_404()
     WrongKeys.query.filter_by(chalid=challenge.id).delete()
     Solves.query.filter_by(chalid=challenge.id).delete()
     Keys.query.filter_by(chal=challenge.id).delete()
+    instances = Instances.query.filter_by(chal=challenge.id).all()
+    instanceids = [x.id for x in instances]
+    FileMappings.query.filter(FileMappings.instance.in_(instanceids)).delete(synchronize_session='fetch')
     Instances.query.filter_by(chal=challenge.id).delete()
     files = Files.query.filter_by(chal=challenge.id).all()
     Files.query.filter_by(chal=challenge.id).delete()
