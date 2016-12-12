@@ -384,6 +384,9 @@ function buildinstance(instance=null){
         filename_btn.append($("<input class='file-id' type='hidden'>").val(fileid));
         options.append(filename_btn);
     });
+    if(options.children().length == 0){
+        options.append('<li>&nbsp; No files uploaded</li>');
+    }
 
     dropdown.append(options);
     buttons.append(dropdown);
