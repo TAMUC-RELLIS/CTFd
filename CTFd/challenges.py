@@ -81,7 +81,11 @@ def chals():
                 name = x[2]
                 desc = x[4]
                 if instance:
-                    params = json_mod.loads(instance.params)
+                    params = {}
+                    try:
+                        params = json_mod.loads(instance.params)
+                    except ValueError:
+                        print "JSON decode eror on string: {}".format(instance.params)
                     name = Template(name).render(params)
                     desc = Template(desc).render(params)
                 fileids = [ mapping.file for mapping in FileMappings.query.filter_by(instance=instance.id).all()]
@@ -230,7 +234,13 @@ def chal(chalid):
 
             for x in keys:
                 if instance:
-                    x['flag'] = Template(x['flag']).render(json_mod.loads(instance.params))
+                    params = {}
+                    try:
+                        params = json_mod.loads(instance.params)
+                    except ValueError:
+                        print "JSON decode eror on string: {}".format(instance.params)
+                    x['flag'] = Template(x['flag']).render(params)
+
                 if x['type'] == 0: #static key
                     print(x['flag'], key.strip().lower())
                     if x['flag'] and x['flag'].strip().lower() == key.strip().lower():
