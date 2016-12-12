@@ -5,7 +5,7 @@ import time
 from flask import current_app as app, render_template, request, redirect, abort, jsonify, json as json_mod, url_for, session, Blueprint
 
 from CTFd.utils import ctftime, view_after_ctf, authed, unix_time, get_kpm, user_can_view_challenges, is_admin, get_config, get_ip, is_verified, ctf_started, ctf_ended, ctf_name
-from CTFd.models import db, Challenges, Files, Solves, WrongKeys, Keys, Instances, Tags, Teams, Awards
+from CTFd.models import db, Challenges, Files, Solves, WrongKeys, Keys, FileMappings, Instances, Tags, Teams, Awards
 
 from flask import render_template, request, redirect, jsonify, url_for, session, Blueprint
 from sqlalchemy.sql import or_
@@ -25,15 +25,13 @@ def hash_choice(items, keys):
      index = crc32(code) % len(items)
      return items[index]
 
-def choose_instance_params(chalid=0):
-    instances = Instances.query.add_columns('id', 'params').filter_by(chal=chalid).all()
-    params = {}
+def choose_instance(chalid=0):
+    instances = Instances.query.filter_by(chal=chalid).order_by(Instances.id.asc()).all()
+    instance = None
     if instances:
-        instances = sorted(instances, key=lambda e: e[1])
         hash_keys = [session.get('id'), chalid]
-        chosen_inst = hash_choice(instances, hash_keys)
-        params = json_mod.loads(chosen_inst[2])
-    return params
+        instance = hash_choice(instances, hash_keys)
+    return instance
 
 
 @challenges.route('/challenges', methods=['GET'])
@@ -78,16 +76,19 @@ def chals():
         json = {'game': []}
         for x in chals:
             tags = [tag.tag for tag in Tags.query.add_columns('tag').filter_by(chal=x[1]).all()]
-            files = [str(f.location) for f in Files.query.filter_by(chal=x.id).all()]
             if x[6]: # If instanced
-                params = choose_instance_params(x[1]); 
+                instance = choose_instance(x[1]); 
                 name = x[2]
                 desc = x[4]
-                if params:
+                if instance:
+                    params = json_mod.loads(instance.params)
                     name = Template(name).render(params)
                     desc = Template(desc).render(params)
+                fileids = [ mapping.file for mapping in FileMappings.query.filter_by(instance=instance.id).all()]
+                files = [ str(f.location) for f in Files.query.filter(Files.id.in_(fileids)).all() ]
                 json['game'].append({'id':x[1], 'name':name, 'value':x[3], 'description':desc, 'category':x[5], 'files':files, 'tags':tags})
             else:
+                files = [ str(f.location) for f in Files.query.filter_by(chal=x.id).all() ]
                 json['game'].append({'id':x[1], 'name':x[2], 'value':x[3], 'description':x[4], 'category':x[5], 'files':files, 'tags':tags})
 
         db.session.close()
@@ -223,13 +224,13 @@ def chal(chalid):
                     'message': "You have 0 tries remaining"
                 })
 
-            params = {}
+            instance = None
             if chal.instanced:
-                params = choose_instance_params(chal.id)
+                instance = choose_instance(chal.id)
 
             for x in keys:
-                if chal.instanced:
-                    x['flag'] = Template(x['flag']).render(params)
+                if instance:
+                    x['flag'] = Template(x['flag']).render(json_mod.loads(instance.params))
                 if x['type'] == 0: #static key
                     print(x['flag'], key.strip().lower())
                     if x['flag'] and x['flag'].strip().lower() == key.strip().lower():
