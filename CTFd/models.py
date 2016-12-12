@@ -110,8 +110,6 @@ class Tags(db.Model):
 class Files(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     chal = db.Column(db.Integer, db.ForeignKey('challenges.id'))
-    instance = db.Column(db.Integer, db.ForeignKey('instances.id'))
-    instance_type = db.Column(db.Integer)
     location = db.Column(db.Text)
 
     def __init__(self, chal, location):
@@ -121,6 +119,16 @@ class Files(db.Model):
     def __repr__(self):
         return "<File {0} for challenge {1}>".format(self.location, self.chal)
 
+class FileMappings(db.Model):
+    file = db.Column(db.Integer, db.ForeignKey('files.id'), primary_key=True)
+    instance = db.Column(db.Integer, db.ForeignKey('instances.id'), primary_key=True)
+
+    def __init__(self, file_id, instance):
+        self.file = file_id
+        self.instance = instance
+
+    def __repr__(self):
+        return "<Mapping file {0} to instance {1}>".format(self.file, self.instance)
 
 class Instances(db.Model):
     id = db.Column(db.Integer, primary_key=True)

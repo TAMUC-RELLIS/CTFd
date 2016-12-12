@@ -124,13 +124,13 @@ table{
     display: block;
 }
 
-@media only screen and (min-width: 40.063em){
+/*@media only screen and (min-width: 40.063em){
     .top-bar .dropdown{
         display: block;
         padding: 0 15px 5px;
         width: 200% !important;
     }
-}
+}*/
 
 .btn {
     letter-spacing: 1px;
@@ -412,17 +412,17 @@ table{
     font-size: 0.75rem;
 }
 
-.dropdown{
+/*.dropdown{ 
     background-color: #333 !important;
     padding: 5px;
-}
+}*/
 
-.dropdown button{
+/*.dropdown button{
     padding-top: 0.45rem;
     padding-bottom: 0.35rem;
     margin-bottom: 0;
     font-size: 0.75rem;
-}
+}*/
 
 #challenges button{
     margin: 5px;

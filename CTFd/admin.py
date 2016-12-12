@@ -9,7 +9,7 @@ from sqlalchemy.sql import not_
 from CTFd.utils import admins_only, is_admin, unix_time, get_config, \
     set_config, sendmail, rmdir, create_image, delete_image, run_image, container_status, container_ports, \
     container_stop, container_start, get_themes, cache, upload_file
-from CTFd.models import db, Teams, Solves, Awards, Containers, Challenges, WrongKeys, Keys, Tags, Files, Instances, Tracking, Pages, Config, DatabaseError
+from CTFd.models import db, Teams, Solves, Awards, Containers, Challenges, WrongKeys, Keys, Tags, Files, Instances, FileMappings, Tracking, Pages, Config, DatabaseError
 from CTFd.scoreboard import get_standings
 
 admin = Blueprint('admin', __name__)
@@ -343,28 +343,38 @@ def admin_instances(chalid):
     if request.method == 'GET':
         instances = Instances.query.filter_by(chal=chalid).all()
         json_data = {'instances':[]}
-        for i, x in enumerate(instances):
-            json_data['instances'].append({'id':x.id, 'params':x.params, 'chal':x.chal})
+        for x in instances:
+            filemappings = [y.file for y in FileMappings.query.filter_by(instance=x.id)]
+            json_data['instances'].append({'id':x.id, 'params':x.params, 'chal':x.chal, 'filemappings':filemappings})
         return jsonify(json_data)
     elif request.method == 'POST':
         currinstances = Instances.query.filter_by(chal=chalid).order_by(Instances.id.asc()).all()
         req_instances = request.form.getlist('instances[]', lambda x: json.loads(x));
-        updatedinstances = dict([(int(x['id']), x['params']) for x in req_instances])
+        updatedinstances = dict([(int(x['id']), x) for x in req_instances])
         #Update any instances with new parameters if their ID is in the DB
         for instance in currinstances:
-            updatedparams = updatedinstances.pop(instance.id, None)
-            if updatedparams:
-                instance.params = updatedparams
+            updatedinst = updatedinstances.pop(instance.id, None)
+            if updatedinst:
+                instance.params = updatedinst['params']
+                FileMappings.query.filter_by(instance=updatedinst['id']).delete()
+                for fileid in updatedinst['filemappings']:
+                    filemapping = FileMappings(fileid, updatedinst['id'])
+                    db.session.add(filemapping)
+
             else:
                 db.session.delete(instance)
         # Create new instances (with new IDs) if their ID is not in the DB
-        for params in updatedinstances.values(): 
-            instance = Instances(chalid, params)
+        for newinst in updatedinstances.values(): 
+            instance = Instances(chalid, newinst['params'])
             db.session.add(instance)
+            db.session.flush()
+            print instance.id
+            for fileid in newinst['filemappings']:
+                filemapping = FileMappings(fileid, instance.id)
+                db.session.add(filemapping)
         db.session.commit()
         db.session.close()
         return '1'
-
 
 @admin.route('/admin/tags/<int:chalid>', methods=['GET', 'POST'])
 @admins_only

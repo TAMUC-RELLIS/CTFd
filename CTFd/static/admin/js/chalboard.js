@@ -143,6 +143,7 @@ function loadfiles(chal){
             var elem = buildfile(files[x].file, files[x].id, chal);
             $('#current-files').append(elem);
         }
+        loadinstances(chal); //Instances need to load after files
     });
 }
 
@@ -165,18 +166,24 @@ function loadinstances(chal){
         instances = instances['instances'];
         $('#current-instances').empty();
         for(x=0; x<instances.length; x++){
-            var elem = buildinstance(instances[x].params, instances[x].id);
+            var elem = buildinstance(instances[x]);
             $('#current-instances').append(elem);
         }
     });
 }
 
 function updateinstances(){
-    instances = [];
+    var instances = [];
     chal = $('#instances-chal').val()
     $('.current-instance').each(function(){
-        inst = {};
+        var inst = {};
+        var filemappings = [];
+        $(this).find('.filemapping-item.active').each(function(){
+            var fileid = $(this).find('.file-id').val();
+            filemappings.push(fileid);
+        });
         inst["params"] = $(this).find(".instance-params").val();
+        inst["filemappings"] = filemappings;
         inst["id"] = $(this).find(".instance-id").val();
         instances.push(JSON.stringify(inst));
     })
@@ -213,7 +220,6 @@ function loadchals(){
             loadkeys(this.value);
             loadtags(this.value);
             loadfiles(this.value);
-            loadinstances(this.value);
         });
 
         $('.create-challenge').click(function (e) {
@@ -321,24 +327,66 @@ function update_instance_ctrls(){
 function buildfile(filepath, id, chal){
     filename = filepath.split('/')
     filename = filename[filename.length - 1]
-    var elem = $('<div class="row" style="margin:5px 0px;">');
-    elem.append('<a style="position:relative;top:10px;" href='+script_root+'/files/'+filepath+'>'+filename+'</a>');
+    var elem = $('<div class="row current-file" style="margin:5px 0px;">');
+    elem.append('<a class="file-link" style="position:relative;top:10px;" href='+script_root+'/files/'+filepath+'>'+filename+'</a>');
 
     var form_group = $('<div class="form-group" style="float: right">');
     form_group.append('<a href="#" class="btn btn-danger" onclick="deletefile('+chal+','+id+', $(this))" value="'+id+'" style="float:right;">Delete</a>');
     elem.append(form_group);
+    elem.append($("<input class='file-id' type='hidden'>").val(id));
     return elem;
 }
 
-function buildinstance(params="", x=null){
-    if(x===null){
-        x = -$('#current-instances input[type=text]').length - 1 // Negative x indicates that this instance is new and needs an id
+function buildinstance(instance=null){
+    var instid = 0;
+    var params = "";
+    var filemappings = [];
+    if(instance===null){
+        instid = -1; // Negative instid indicates that this instance is new and needs an id
     }
-    var elem = $('<div class="col-md-12 row">');
+    else{
+        instid = instance.id;
+        params = instance.params;
+        filemappings = instance.filemappings;
+    }
+    var elem = $('<div class="col-md-12 row current-instance">');
+    
+    var textbox = $("<div class='form-group col-md-8'>");
+    textbox.append($("<input class='instance-params form-control' type='text' placeholder='Template parameters (JSON)'>").val(params))
+    textbox.append($("<input class='instance-id' type='hidden'>").val(instid));
+    elem.append(textbox)
 
-    elem.append($("<div class='form-group current-instance col-md-8'>").append($("<input class='instance-params form-control' type='text' placeholder='Template parameters (JSON)'>").val(params)).append($("<input class='instance-id' type='hidden'>").val(x)));
+    var buttons = $('<div class="form-group col-md-4">');
+    var dropdown = $('<div class="dropdown">');
+    dropdown.append('<button class="btn btn-default dropdown-toggle" type="button" id="filemapping_dropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">Mapped files<span class="caret"></span></button>');
+    var options = $('<ul class="dropdown-menu" aria-labelledby="filemapping_dropdown">');
 
-    var buttons = $('<div class="form-group">');
+    $('.current-file').each(function(){
+        filename_btn = $('<li class="filemapping-item"><a href="#"><span class="fa fa-square-o" aria-hidden="true"></span><span class="fa fa-check-square-o" aria-hidden="true"></span> '+$(this).find('.file-link').text()+'</a></li>');
+        filename_btn.click(function(e){
+            if($(this).hasClass('active')){
+                $(this).removeClass('active');
+                $(this).find('.fa-check-square-o').hide();
+                $(this).find('.fa-square-o').show();
+            }
+            else{
+                $(this).addClass('active');
+                $(this).find('.fa-check-square-o').show();
+                $(this).find('.fa-square-o').hide();
+            }
+            e.stopPropagation();
+        })
+        filename_btn.find('.fa-check-square-o').hide();
+        var fileid = parseInt($(this).find('.file-id').val());
+        if($.inArray(fileid, filemappings) > -1){
+            filename_btn.click();
+        }
+        filename_btn.append($("<input class='file-id' type='hidden'>").val(fileid));
+        options.append(filename_btn);
+    });
+
+    dropdown.append(options);
+    buttons.append(dropdown);
     buttons.append('<a href="#" onclick="$(this).parent().parent().remove()" class="btn btn-danger pull-right instance-remove-button">Remove</a>');
     elem.append(buttons);
     return elem;
