@@ -342,7 +342,14 @@ function buildinstance(instance=null){
     var params = "";
     var filemappings = [];
     if(instance===null){
-        instid = -1; // Negative instid indicates that this instance is new and needs an id
+        instid = -1; // Negative instid indicates that this instance is new and needs an id. This id must eb unique
+        $('.current-instance').each(function(){
+            var x = parseInt($(this).find('.instance-id').val());
+            console.log(x);
+            if(x <= instid){
+                instid = x-1;
+            }
+        }); 
     }
     else{
         instid = instance.id;
