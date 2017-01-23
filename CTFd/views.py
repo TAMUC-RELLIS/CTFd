@@ -45,7 +45,7 @@ def setup():
 
             # Index page
             page = Pages('index', """<div class="container main-container">
-    <img class="logo" src="{0}/static/{{ ctf_theme() }}/img/logo.png" />
+    <img class="logo" src="{0}/static/TAMUctf/img/logo.png" />
     <h3 class="text-center">
         Welcome to TAMUctf.
     </h3>
