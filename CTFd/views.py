@@ -51,13 +51,13 @@ def setup():
 
             ## Index page
             page = Pages('index', """<div class="container main-container">
-    <img class="logo" src="{0}/static/original/img/logo.png" />
+    <img class="logo" src="{0}/static/{{ ctf_theme() }}/img/logo.png" />
     <h3 class="text-center">
-        Welcome to a cool CTF framework written by <a href="https://github.com/ColdHeat">Kevin Chung</a> of <a href="https://github.com/isislab">@isislab</a>
+        Welcome to TAMUctf.
     </h3>
 
     <h4 class="text-center">
-        <a href="{0}/admin">Click here</a> to login and setup your CTF
+        <a href="{0}/login">Click here</a> to login
     </h4>
 </div>""".format(request.script_root))
 
