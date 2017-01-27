@@ -47,11 +47,11 @@ def setup():
             page = Pages('index', """<div class="container main-container">
     <img class="logo" src="{0}/static/TAMUctf/img/logo.png" />
     <h3 class="text-center">
-        Welcome to TAMUctf.
+        Welcome to TAMUctf. Zpvs dibmmfohf bxbjut!
     </h3>
 
     <h4 class="text-center">
-        <a href="{0}/login">Click here</a> to login
+        <a href="{0}/login">Click here</a> to login or <a href="{0}/register">here</a> to sign up.
     </h4>
 </div>""".format(request.script_root))
 
