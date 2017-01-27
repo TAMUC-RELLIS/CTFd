@@ -10,9 +10,9 @@
     <link rel="stylesheet" href="{{ request.script_root }}/static/{{ ctf_theme() }}/css/vendor/bootstrap.min.css">
     <link rel="stylesheet"
           href="{{ request.script_root }}/static/{{ ctf_theme() }}/css/vendor/font-awesome/css/font-awesome.min.css"/>
-    <link href='{{ request.script_root }}/static/{{ ctf_theme() }}/css/vendor/lato.css' rel='stylesheet'
+    <link href='{{ request.script_root }}/static/{{ ctf_theme() }}/css/vendor/OpenSans.css' rel='stylesheet'
           type='text/css'>
-    <link href='{{ request.script_root }}/static/{{ ctf_theme() }}/css/vendor/raleway.css' rel='stylesheet'
+    <link href='{{ request.script_root }}/static/{{ ctf_theme() }}/css/vendor/HACKED.css' rel='stylesheet'
           type='text/css'>
     <link rel="stylesheet" href="{{ request.script_root }}/static/{{ ctf_theme() }}/css/style.css">
     <link rel="stylesheet" type="text/css" href="{{ request.script_root }}/static/user.css">
@@ -21,6 +21,13 @@
     <script type="text/javascript">
         var script_root = "{{ request.script_root }}";
     </script>
+    <style> 
+    li {
+       font-family: HACKED;
+       font-size: 18px;
+       letter-spacing: 0.2rem;
+    }
+    </style>
 </head>
 <body>
 <div class="body-container">
@@ -32,7 +39,7 @@
                     <span class="icon-bar"></span>
                     <span class="icon-bar"></span>
                 </button>
-                <a href="{{ request.script_root }}/" class="navbar-brand">{{ ctf_name() }}</a>
+                <a href="{{ request.script_root }}/" class="navbar-brand"><img src="{{ request.script_root }}/static/{{ ctf_theme() }}/img/{{ ctf_name() }}.png" height="185%" style="position: relative; top: -0.35em;"></a>
             </div>
             <div class="navbar-collapse collapse" aria-expanded="false" style="height: 0px">
                 <ul class="nav navbar-nav">
