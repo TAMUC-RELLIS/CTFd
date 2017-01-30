@@ -80,14 +80,16 @@ def chals():
                 instance = choose_instance(x[1]); 
                 name = x[2]
                 desc = x[4]
+
+                params = {}
                 if instance:
-                    params = {}
                     try:
                         params = json_mod.loads(instance.params)
                     except ValueError:
                         print "JSON decode eror on string: {}".format(instance.params)
-                    name = Template(name).render(params)
-                    desc = Template(desc).render(params)
+                name = Template(name).render(params)
+                desc = Template(desc).render(params)
+
                 fileids = [ mapping.file for mapping in FileMappings.query.filter_by(instance=instance.id).all()]
                 files = [ str(f.location) for f in Files.query.filter(Files.id.in_(fileids)).all() ]
                 json['game'].append({'id':x[1], 'name':name, 'value':x[3], 'description':desc, 'category':x[5], 'files':files, 'tags':tags})
@@ -233,12 +235,13 @@ def chal(chalid):
                 instance = choose_instance(chal.id)
 
             for x in keys:
-                if instance:
+                if chal.instanced:
                     params = {}
-                    try:
-                        params = json_mod.loads(instance.params)
-                    except ValueError:
-                        print "JSON decode eror on string: {}".format(instance.params)
+                    if instance:
+                        try:
+                            params = json_mod.loads(instance.params)
+                        except ValueError:
+                            print "JSON decode eror on string: {}".format(instance.params)
                     x['flag'] = Template(x['flag']).render(params)
 
                 if x['type'] == 0: #static key
