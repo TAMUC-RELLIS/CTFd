@@ -358,15 +358,52 @@ function buildinstance(instance=null){
     }
     var elem = $('<div class="col-md-12 row current-instance">');
     
-    var textbox = $("<div class='form-group col-md-8'>");
-    textbox.append($("<input class='instance-params form-control' type='text' placeholder='Template parameters (JSON)'>").val(params))
+    var textbox = $("<div class='params-input-group form-group has-feedback col-md-7' >");
+    textbox.append($("<textarea class='instance-params form-control' style='resize:vertical' placeholder='Template parameters (JSON object)'>").val(params))
+    //textbox.append($('<span class="form-control-feedback fa fa-exclamation-triangle" aria-hidden="true">'));
     textbox.append($("<input class='instance-id' type='hidden'>").val(instid));
     elem.append(textbox)
+    
+    // Callback to check params validity
+    textbox.change(function(e){
+        var isJSON = false;
+        var params = $(this).find('.instance-params').val();
+        try{
+            var o = JSON.parse(params);
 
-    var buttons = $('<div class="form-group col-md-4">');
-    var dropdown = $('<div class="dropdown">');
-    dropdown.append('<button class="btn btn-default dropdown-toggle" type="button" id="filemapping_dropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">Mapped files<span class="caret"></span></button>');
+            if(o && typeof o == "object") {
+                isJSON = true;
+            }
+        }
+        catch(e) { }
+        if(isJSON){
+            $(this).removeClass("has-error");
+            var isValid = true;
+            $(".params-input-group").each(function(){
+                if($(this).hasClass("has-error")){
+                    isValid = false;
+                }
+            });
+            if(isValid){
+                $("#submit-instances").removeClass("disabled");
+                $("#submit-instances").css("pointer-events", "auto");
+            }
+
+        }
+        else{
+            $(this).addClass("has-error");
+            $("#submit-instances").addClass("disabled");
+            $("#submit-instances").css("pointer-events", "none");
+        }
+    });
+    textbox.change();
+
+    var buttons = $('<div class="btn-group col-md-5" role="group">');
+    var dropdown = $('<div class="btn-group dropdown" role="group">');
+    dropdown.append('<button class="btn btn-default dropdown-toggle" type="button" id="filemapping_dropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true"><span class="file-quantity">0</span> File<span class="file-plural">s</span> <span class="caret"></span></button>');
     var options = $('<ul class="dropdown-menu" aria-labelledby="filemapping_dropdown">');
+    dropdown.append(options);
+    buttons.append(dropdown);
 
     $('.current-file').each(function(){
         filename_btn = $('<li class="filemapping-item"><a href="#"><span class="fa fa-square-o" aria-hidden="true"></span><span class="fa fa-check-square-o" aria-hidden="true"></span> '+$(this).find('.file-link').text()+'</a></li>');
@@ -381,23 +418,31 @@ function buildinstance(instance=null){
                 $(this).find('.fa-check-square-o').show();
                 $(this).find('.fa-square-o').hide();
             }
+            var numActive = $(this).parent().find(".active").length;
+            $(this).parent().parent().find(".file-quantity").text(numActive.toString());
+            if(numActive == 1){
+                $(this).parent().parent().find(".file-plural").html("&nbsp;");
+            }
+            else {
+                $(this).parent().parent().find(".file-plural").html("s");
+            }
             e.stopPropagation();
         })
         filename_btn.find('.fa-check-square-o').hide();
+
         var fileid = parseInt($(this).find('.file-id').val());
+        filename_btn.append($("<input class='file-id' type='hidden'>").val(fileid));
+        options.append(filename_btn);
+
         if($.inArray(fileid, filemappings) > -1){
             filename_btn.click();
         }
-        filename_btn.append($("<input class='file-id' type='hidden'>").val(fileid));
-        options.append(filename_btn);
     });
     if(options.children().length == 0){
         options.append('<li>&nbsp; No files uploaded</li>');
     }
 
-    dropdown.append(options);
-    buttons.append(dropdown);
-    buttons.append('<a href="#" onclick="$(this).parent().parent().remove()" class="btn btn-danger pull-right instance-remove-button">Remove</a>');
+    buttons.append('<a href="#" onclick="$(this).parent().parent().remove()" style="margin-right:-10px;" class="btn btn-danger pull-right instance-remove-button">Remove</a>');
     elem.append(buttons);
     return elem;
 }
