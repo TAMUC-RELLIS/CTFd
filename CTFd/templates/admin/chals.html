@@ -228,9 +228,16 @@
                         <div id="current-instances" class="row"></div>
                         <div class="row">
                             <input type="hidden" value="{{ nonce }}" name="nonce" id="nonce">
+                        </div>
+                        <div class="row">
                             <button id="submit-instances" class="btn btn-theme btn-outlined">Update</button>
                         </div>
                     </form>
+                </div>
+                <div class="">
+                    <div id="instance-error-notification" class="alert alert-dismissable alert-danger" role="alert">
+                      <strong id="instance-error-message"></strong>
+                    </div>
                 </div>
             </div>
         </div>

@@ -169,6 +169,7 @@ function loadinstances(chal){
             var elem = buildinstance(instances[x]);
             $('#current-instances').append(elem);
         }
+        setSubmitInstBtnStatus()
     });
 }
 
@@ -313,6 +314,7 @@ $('#create-key').click(function(e){
 $('#create-instance').click(function(e){
     elem = buildinstance();
     $('#current-instances').append(elem);
+    setSubmitInstBtnStatus()
 });
 
 function update_instance_ctrls(){
@@ -337,6 +339,29 @@ function buildfile(filepath, id, chal){
     return elem;
 }
 
+function setSubmitInstBtnStatus(){
+    var isValid = true;
+    var failureIndices = [];
+    $(".params-input-group").each(function(i){
+        if($(this).hasClass("has-error")){
+            isValid = false;
+            failureIndices.push(i);
+        }
+    });
+    if(isValid){
+        $("#submit-instances").removeClass("disabled");
+        $("#submit-instances").css("pointer-events", "auto");
+        $("#instance-error-notification").slideUp();
+    }
+    else{
+        $("#submit-instances").addClass("disabled");
+        $("#submit-instances").css("pointer-events", "none");
+        $("#instance-error-notification").slideDown();
+        $("#instance-error-message").text("Invalid JSON object strings in the following instance indices: " + failureIndices.toString());
+    }
+    return isValid;
+}
+
 function buildinstance(instance=null){
     var instid = 0;
     var params = "";
@@ -345,7 +370,6 @@ function buildinstance(instance=null){
         instid = -1; // Negative instid indicates that this instance is new and needs an id. This id must eb unique
         $('.current-instance').each(function(){
             var x = parseInt($(this).find('.instance-id').val());
-            console.log(x);
             if(x <= instid){
                 instid = x-1;
             }
@@ -378,23 +402,11 @@ function buildinstance(instance=null){
         catch(e) { }
         if(isJSON){
             $(this).removeClass("has-error");
-            var isValid = true;
-            $(".params-input-group").each(function(){
-                if($(this).hasClass("has-error")){
-                    isValid = false;
-                }
-            });
-            if(isValid){
-                $("#submit-instances").removeClass("disabled");
-                $("#submit-instances").css("pointer-events", "auto");
-            }
-
         }
         else{
             $(this).addClass("has-error");
-            $("#submit-instances").addClass("disabled");
-            $("#submit-instances").css("pointer-events", "none");
         }
+        setSubmitInstBtnStatus()
     });
     textbox.change();
 
@@ -442,7 +454,7 @@ function buildinstance(instance=null){
         options.append('<li>&nbsp; No files uploaded</li>');
     }
 
-    buttons.append('<a href="#" onclick="$(this).parent().parent().remove()" style="margin-right:-10px;" class="btn btn-danger pull-right instance-remove-button">Remove</a>');
+    buttons.append('<a href="#" onclick="$(this).parent().parent().remove(); setSubmitInstBtnStatus()" style="margin-right:-10px;" class="btn btn-danger pull-right instance-remove-button">Remove</a>');
     elem.append(buttons);
     return elem;
 }
