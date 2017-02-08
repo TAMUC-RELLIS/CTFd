@@ -7,6 +7,7 @@ from struct import unpack, pack, error as struct_error
 from flask_sqlalchemy import SQLAlchemy
 from passlib.hash import bcrypt_sha256
 from sqlalchemy.exc import DatabaseError
+from sqlalchemy import String
 
 
 def sha512(string):
@@ -62,6 +63,7 @@ class Challenges(db.Model):
     category = db.Column(db.String(80))
     flags = db.Column(db.Text)
     hidden = db.Column(db.Boolean)
+    # discovery = db.Column(db.String(80))
 
     def __init__(self, name, description, value, category, flags):
         self.name = name
@@ -104,6 +106,19 @@ class Tags(db.Model):
 
     def __repr__(self):
         return "<Tag {0} for challenge {1}>".format(self.tag, self.chal)
+        
+        
+class DiscoveryList(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    chal = db.Column(db.Integer, db.ForeignKey('challenges.id'))
+    discovery = db.Column(db.String(80))
+
+    def __init__(self, chal, discovery):
+        self.chal = chal
+        self.discovery = discovery
+
+    def __repr__(self):
+        return "{0}".format(self.chal)
 
 
 class Files(db.Model):

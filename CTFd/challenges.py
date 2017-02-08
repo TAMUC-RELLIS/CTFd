@@ -2,12 +2,13 @@ import json
 import logging
 import re
 import time
+import sys # Delete after debug
 
 from flask import render_template, request, redirect, jsonify, url_for, session, Blueprint
 from sqlalchemy.sql import or_
 
 from CTFd.utils import ctftime, view_after_ctf, authed, unix_time, get_kpm, user_can_view_challenges, is_admin, get_config, get_ip, is_verified, ctf_started, ctf_ended, ctf_name
-from CTFd.models import db, Challenges, Files, Solves, WrongKeys, Tags, Teams, Awards
+from CTFd.models import db, Challenges, Files, Solves, WrongKeys, Tags, DiscoveryList, Teams, Awards
 
 challenges = Blueprint('challenges', __name__)
 
@@ -50,20 +51,54 @@ def chals():
                 return redirect(url_for('views.static_html'))
     if user_can_view_challenges() and (ctf_started() or is_admin()):
         chals = Challenges.query.filter(or_(Challenges.hidden != True, Challenges.hidden == None)).add_columns('id', 'name', 'value', 'description', 'category').order_by(Challenges.value).all()
+        
+        if chals:
+          chals = discovery(chals)
 
         json = {'game': []}
         for x in chals:
             tags = [tag.tag for tag in Tags.query.add_columns('tag').filter_by(chal=x[1]).all()]
             files = [str(f.location) for f in Files.query.filter_by(chal=x.id).all()]
             json['game'].append({'id': x[1], 'name': x[2], 'value': x[3], 'description': x[4], 'category': x[5], 'files': files, 'tags': tags})
-
+        
         db.session.close()
         return jsonify(json)
     else:
         db.session.close()
         return redirect(url_for('auth.login', next='chals'))
-
-
+        
+      
+@challenges.route('/chals/solves')
+def discovery(nonHidden):
+    discovered = []
+    if user_can_view_challenges() and (ctf_started() and not is_admin()):
+      for x in nonHidden:
+        show = 0
+        empty = 1
+        print "Challenge #" + str(x[1]) + " - Needed problems solved to be seen:"
+        for y in DiscoveryList.query.add_columns('id', 'discovery').all():
+          if (str(y[0]) == str(x[1])):
+            empty = 0
+            temp_query = Challenges.query.add_columns('id').filter_by(name=str(y[2])).all()
+            if temp_query:
+              need_solved = temp_query[0][1]
+              print "Challenge ID: " + str(need_solved) + " Needed to see problem"
+            else:
+              need_solved = 0 # If Problem Doesn't exist
+              print y[2] + " Not found"
+            for z in Solves.query.add_columns('chalid').filter_by(teamid=session['id']).all():
+              if need_solved == z[1]:
+                show = 1
+                print "Hit"
+                break
+        if (empty or show):
+          print "Show this, sir"
+          discovered.append(x)
+    else:
+      discovered = nonHidden
+        
+    return discovered
+    
 @challenges.route('/chals/solves')
 def solves_per_chal():
     if not user_can_view_challenges():

@@ -9,7 +9,7 @@ from sqlalchemy.sql import not_
 from CTFd.utils import admins_only, is_admin, unix_time, get_config, \
     set_config, sendmail, rmdir, create_image, delete_image, run_image, container_status, container_ports, \
     container_stop, container_start, get_themes, cache, upload_file
-from CTFd.models import db, Teams, Solves, Awards, Containers, Challenges, WrongKeys, Keys, Tags, Files, Tracking, Pages, Config, DatabaseError
+from CTFd.models import db, Teams, Solves, Awards, Containers, Challenges, WrongKeys, Keys, Tags, DiscoveryList, Files, Tracking, Pages, Config, DatabaseError
 from CTFd.scoreboard import get_standings
 
 admin = Blueprint('admin', __name__)
@@ -366,6 +366,35 @@ def admin_delete_tags(tagid):
         db.session.close()
         return '1'
 
+@admin.route('/admin/discoveryList/<int:chalid>', methods=['GET', 'POST'])
+@admins_only
+def admin_discoveryList(chalid):
+    if request.method == 'GET':
+        discoveryList = DiscoveryList.query.filter_by(chal=chalid).all()
+        json_data = {'discoveryList': []}
+        for x in discoveryList:
+            json_data['discoveryList'].append({'id': x.id, 'chal': x.chal, 'discovery': x.discovery})
+        return jsonify(json_data)
+
+    elif request.method == 'POST':
+        newdiscoveryList = request.form.getlist('discoveryList[]')
+        for x in newdiscoveryList:
+            discovery = DiscoveryList(chalid, x)
+            db.session.add(discovery)
+        db.session.commit()
+        db.session.close()
+        return '1'
+        
+
+@admin.route('/admin/discoveryList/<int:discoveryid>/delete', methods=['POST'])
+@admins_only
+def admin_delete_discoveryList(discoveryid):
+    if request.method == 'POST':
+        discovery = DiscoveryList.query.filter_by(id=discoveryid).first_or_404()
+        db.session.delete(discovery)
+        db.session.commit()
+        db.session.close()
+        return '1'
 
 @admin.route('/admin/files/<int:chalid>', methods=['GET', 'POST'])
 @admins_only
@@ -821,6 +850,7 @@ def admin_delete_chal():
         folder = os.path.dirname(os.path.join(os.path.normpath(app.root_path), 'uploads', file.location))
         rmdir(folder)
     Tags.query.filter_by(chal=challenge.id).delete()
+    DiscoveryList.query.filter_by(chal=challenge.id).delete()
     Challenges.query.filter_by(id=challenge.id).delete()
     db.session.commit()
     db.session.close()

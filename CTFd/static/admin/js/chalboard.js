@@ -34,6 +34,7 @@ function loadchal(id, update) {
     $('.chal-value').val(obj.value);
     $('.chal-category').val(obj.category);
     $('.chal-id').val(obj.id);
+    $('.chal-discoveryList').val(obj.discovery); //HERE
     $('.chal-hidden').prop('checked', false);
     if (obj.hidden) {
         $('.chal-hidden').prop('checked', true);
@@ -107,8 +108,30 @@ function loadtags(chal){
     });
 }
 
+function loaddiscoveryList(chal){
+    $('#discoveryList-chal').val(chal)
+    $('#current-discoveryList').empty()
+    $('#chal-discoveryList').empty()
+    $.get(script_root + '/admin/discoveryList/'+chal, function(data){
+        discoveryList = $.parseJSON(JSON.stringify(data))
+        discoveryList = discoveryList['discoveryList']
+        for (var i = 0; i < discoveryList.length; i++) {
+            discovery = "<span class='label label-primary chal-discovery'><span>"+discoveryList[i].discovery+"</span><a name='"+discoveryList[i].id+"'' class='delete-discovery'>&#215;</a></span>"
+            $('#current-discoveryList').append(discovery)
+        };
+        $('.delete-discovery').click(function(e){
+            deletediscovery(e.target.name)
+            $(e.target).parent().remove()
+        });
+    });
+}
+
 function deletetag(tagid){
     $.post(script_root + '/admin/tags/'+tagid+'/delete', {'nonce': $('#nonce').val()});
+}
+
+function deletediscovery(discoveryid){
+    $.post(script_root + '/admin/discoveryList/'+discoveryid+'/delete', {'nonce': $('#nonce').val()});
 }
 
 function deletechal(chalid){
@@ -122,6 +145,16 @@ function updatetags(){
         tags.push($(e).text())
     });
     $.post(script_root + '/admin/tags/'+chal, {'tags':tags, 'nonce': $('#nonce').val()})
+    loadchal(chal)
+}
+
+function updatediscoveryList(){
+    discoveryList = [];
+    chal = $('#discoveryList-chal').val()
+    $('#chal-discoveryList > span > span').each(function(i, e){
+        discoveryList.push($(e).text())
+    });
+    $.post(script_root + '/admin/discoveryList/'+chal, {'discoveryList':discoveryList, 'nonce': $('#nonce').val()})
     loadchal(chal)
 }
 
@@ -180,6 +213,7 @@ function loadchals(){
             loadkeys(this.value);
             loadtags(this.value);
             loadfiles(this.value);
+            loaddiscoveryList(this.value);
         });
 
         $('.create-challenge').click(function (e) {
@@ -203,6 +237,11 @@ $('#submit-keys').click(function (e) {
 $('#submit-tags').click(function (e) {
     e.preventDefault();
     updatetags()
+});
+
+$('#submit-discoveryList').click(function (e) {
+    e.preventDefault();
+    updatediscoveryList()
 });
 
 $('#delete-chal form').submit(function(e){
@@ -232,7 +271,17 @@ $(".tag-insert").keyup(function (e) {
     }
 });
 
-
+$(".discovery-insert").keyup(function (e) {
+    if (e.keyCode == 13) {
+        discovery = $('.discovery-insert').val()
+        discovery = discovery.replace(/'/g, '');
+        if (discovery.length > 0){
+            discovery = "<span class='label label-primary chal-discovery'><span>"+discovery+"</span><a class='delete-discovery' onclick='$(this).parent().remove()'>&#215;</a></span>"
+            $('#chal-discoveryList').append(discovery)
+        }
+        $('.discovery-insert').val("")
+    }
+});
 
 // Markdown Preview
 $('#desc-edit').on('shown.bs.tab', function (event) {
