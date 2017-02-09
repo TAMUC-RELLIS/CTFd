@@ -50,7 +50,7 @@ function loadchal(id, update) {
     $('.chal-value').val(obj.value);
     $('.chal-category').val(obj.category);
     $('.chal-id').val(obj.id);
-    $('.chal-discoveryList').val(obj.discovery); //HERE
+    // $('.chal-discoveryList').val(obj.discovery); //HERE
     $('.chal-hidden').prop('checked', false);
     if (obj.hidden) {
         $('.chal-hidden').prop('checked', true);

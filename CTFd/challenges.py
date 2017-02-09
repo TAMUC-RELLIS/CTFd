@@ -85,31 +85,53 @@ def discovery(nonHidden):
     discovered = []
     if user_can_view_challenges() and (ctf_started() and not is_admin()):
       for x in nonHidden:
-        show = 0
-        empty = 1
+        show, not_found = 0, 0
+        and_list = []
         print "Challenge #" + str(x[1]) + " - Needed problems solved to be seen:"
         for y in DiscoveryList.query.add_columns('id', 'discovery').all():
-          if (str(y[0]) == str(x[1])):
-            empty = 0
-            temp_query = Challenges.query.add_columns('id').filter_by(name=str(y[2])).all()
-            if temp_query:
-              need_solved = temp_query[0][1]
-              print "Challenge ID: " + str(need_solved) + " Needed to see problem"
-            else:
-              need_solved = 0 # If Problem Doesn't exist
-              print y[2] + " Not found"
-            for z in Solves.query.add_columns('chalid').filter_by(teamid=session['id']).all():
-              if need_solved == z[1]:
-                show = 1
-                print "Hit"
+          if (str(y[0]) == str(x[1]) and show != 1):
+            print "Found: " + str(y)
+            not_found = 0
+            and_list = discovery_and_query(y[2])
+            for need_solved in and_list:
+              if (need_solved == "hide"): # Not found => Not correct
+                print "Part of: " + str(y[2].split('&')) + " was not found. PROBLEM HIDDEN"
+                not_found = 1
                 break
-        if (empty or show):
-          print "Show this, sir"
+              else:
+                for z in Solves.query.add_columns('chalid').filter_by(teamid=session['id']).all():
+                  show = 2
+                  if need_solved == z[1]:
+                    show = 1
+                    print "Challenge ID: " + str(need_solved) + " has been solved & is needed"
+                    break
+                if(show==2):
+                  not_found=1
+            if(not_found):
+              show=0
+        if (len(and_list)==0 or show==1):
+          print "Show this, and_list" + str(and_list) + " show:" + str(show)
           discovered.append(x)
+        else:
+          print "HIDDEN" + str(and_list) + " show:" + str(show)
+          
+        print " "
     else:
       discovered = nonHidden
-        
     return discovered
+    
+@challenges.route('/chals/solves')
+def discovery_and_query(totalQuery):
+    and_list = []
+    print "NEW TAG!!"
+    for a in totalQuery.split('&'):
+      temp_query = Challenges.query.add_columns('id').filter_by(name=str(a)).all()
+      if temp_query: # If problem exists
+        and_list.append(temp_query[0][1]) # Add challenge ID
+      else:
+        and_list.append("hide") # Else, add a hide element
+    return and_list
+    
     
 @challenges.route('/chals/solves')
 def solves_per_chal():
