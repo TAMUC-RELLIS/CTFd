@@ -93,6 +93,7 @@ function submitkey(chal, key, nonce) {
             answer_input.val("");
             answer_input.removeClass("wrong");
             answer_input.addClass("correct");
+            loadchals();
         }
         else if (result.status == 2){ // Challenge already solved
             result_notification.addClass('alert alert-info alert-dismissable');

@@ -52,7 +52,7 @@ def chals():
     if user_can_view_challenges() and (ctf_started() or is_admin()):
         chals = Challenges.query.filter(or_(Challenges.hidden != True, Challenges.hidden == None)).add_columns('id', 'name', 'value', 'description', 'category').order_by(Challenges.value).all()
         
-        if chals:
+        if len(chals)!=0:
           chals = discovery(chals)
 
         json = {'game': []}
