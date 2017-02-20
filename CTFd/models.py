@@ -115,10 +115,12 @@ class Files(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     chal = db.Column(db.Integer, db.ForeignKey('challenges.id'))
     location = db.Column(db.Text)
+    generated = db.Column(db.Boolean)
 
-    def __init__(self, chal, location):
+    def __init__(self, chal, location, generated=False):
         self.chal = chal
         self.location = location
+        self.generated = generated
 
     def __repr__(self):
         return "<File {0} for challenge {1}>".format(self.location, self.chal)

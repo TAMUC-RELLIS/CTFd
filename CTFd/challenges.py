@@ -118,6 +118,14 @@ def chals():
                                 if files:
                                     file_path_prefix = os.path.relpath(gen_script_dir, start=gen_folder)
                                     files = [os.path.join(file_path_prefix, file) for file in files]
+
+                                    files_db_objs = Files.query.add_columns('location').filter_by(chal=x[1]).all()
+                                    files_db = [f.location for f in files_db_objs]
+                                    for file in files:
+                                        if file not in files_db:
+                                            db.session.add(Files(x[1], file, True))
+                                    db.session.commit()
+
                             else:
                                 print "Generator module from {} missing gen_config function".format(gen_script)
 
