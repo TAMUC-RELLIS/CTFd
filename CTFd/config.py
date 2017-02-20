@@ -87,6 +87,12 @@ class Config(object):
     '''
     UPLOAD_FOLDER = os.path.normpath('uploads')
 
+    '''
+    GENERATOR_FOLDER is the location of the scripts which generated challenge instances.
+    The default destination is the CTFd/generators folder.
+    '''
+    GENERATOR_FOLDER = os.path.normpath('generators')
+
 
     '''
     TEMPLATES_AUTO_RELOAD specifies whether Flask should check for modifications to templates and

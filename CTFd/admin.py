@@ -279,7 +279,7 @@ def new_container():
 @admins_only
 def admin_chals():
     if request.method == 'POST':
-        chals = Challenges.query.add_columns('id', 'name', 'value', 'description', 'category', 'hidden', 'instanced').order_by(Challenges.value).all()
+        chals = Challenges.query.add_columns('id', 'name', 'value', 'description', 'category', 'hidden', 'instanced', 'generated', 'generator').order_by(Challenges.value).all()
 
         teams_with_points = db.session.query(Solves.teamid).join(Teams).filter(
             Teams.banned == False).group_by(Solves.teamid).count()
@@ -365,7 +365,7 @@ def admin_instances(chalid):
                 FileMappings.query.filter_by(instance=instance.id).delete()
                 db.session.delete(instance)
         # Create new instances (with new IDs) if their ID is not in the DB
-        for newinst in updatedinstances.values(): 
+        for newinst in updatedinstances.values():
             instance = Instances(chalid, newinst['params'])
             db.session.add(instance)
             db.session.flush()

@@ -1,6 +1,8 @@
 import logging
 import re
 import time
+import imp
+import os
 
 from flask import current_app as app, render_template, request, redirect, abort, jsonify, json as json_mod, url_for, session, Blueprint
 
@@ -71,27 +73,70 @@ def chals():
             else:
                 return redirect(url_for('views.static_html'))
     if user_can_view_challenges() and (ctf_started() or is_admin()):
-        chals = Challenges.query.filter(or_(Challenges.hidden != True, Challenges.hidden == None)).add_columns('id', 'name', 'value', 'description', 'category', 'instanced').order_by(Challenges.value).all()
+        chals = Challenges.query.filter(or_(Challenges.hidden != True, Challenges.hidden == None)).add_columns('id', 'name', 'value', 'description', 'category', 'instanced', 'generated', 'generator').order_by(Challenges.value).all()
 
         json = {'game': []}
         for x in chals:
             tags = [tag.tag for tag in Tags.query.add_columns('tag').filter_by(chal=x[1]).all()]
             if x[6]: # If instanced
-                instance = choose_instance(x[1]); 
                 name = x[2]
                 desc = x[4]
 
+                files = []
                 params = {}
-                if instance:
-                    try:
-                        params = json_mod.loads(instance.params)
-                    except ValueError:
-                        print "JSON decode eror on string: {}".format(instance.params)
+                if x[7]:
+                    gen_folder = os.path.join(os.path.normpath(app.root_path), app.config['GENERATOR_FOLDER'])
+                    gen_script = os.path.join(gen_folder, x[8])
+                    print "Generator script {}".format(gen_script)
+
+                    if os.path.isfile(gen_script):
+                        hash = 0
+                        with open(gen_script, 'r') as f:
+                            hash = crc32(f.read()) & 0xffffffff
+                        gen_name = "generator_{:08x}".format(hash)
+                        print "Importing ({}, {})".format(gen_name, gen_script)
+
+                        gen_module = None
+                        cwd = os.getcwd()
+                        gen_script_dir, gen_script_name = os.path.split(gen_script)
+                        os.chdir(gen_script_dir)
+                        try:
+                            gen_module = imp.load_source(gen_name, gen_script)
+                        except Exception as e:
+                            print "Importing generator module from {} failed with exception {}".format(gen_script, e)
+                        except:
+                            print "Non-exception object raised while importing from {}".format(gen_script)
+
+                        if gen_module:
+                            if hasattr(gen_module, 'gen_config'):
+                                try:
+                                    params, files = gen_module.gen_config(session['id'])
+                                except Exception as e:
+                                    print "Execution of generator module from {} failed with exception {}".format(gen_script, e)
+                                except:
+                                    print "Non-exception object raised while executing module from {}".format(gen_script)
+                                if files:
+                                    file_path_prefix = os.path.relpath(gen_script_dir, start=gen_folder)
+                                    files = [os.path.join(file_path_prefix, file) for file in files]
+                            else:
+                                print "Generator module from {} missing gen_config function".format(gen_script)
+
+                        os.chdir(cwd)
+
+
+                else:
+                    instance = choose_instance(x[1]);
+                    if instance:
+                        try:
+                            params = json_mod.loads(instance.params)
+                        except ValueError:
+                            print "JSON decode eror on string: {}".format(instance.params)
+                    fileids = [ mapping.file for mapping in FileMappings.query.filter_by(instance=instance.id).all()]
+                    files = [ str(f.location) for f in Files.query.filter(Files.id.in_(fileids)).all() ]
+
                 name = Template(name).render(params)
                 desc = Template(desc).render(params)
 
-                fileids = [ mapping.file for mapping in FileMappings.query.filter_by(instance=instance.id).all()]
-                files = [ str(f.location) for f in Files.query.filter(Files.id.in_(fileids)).all() ]
                 json['game'].append({'id':x[1], 'name':name, 'value':x[3], 'description':desc, 'category':x[5], 'files':files, 'tags':tags})
             else:
                 files = [ str(f.location) for f in Files.query.filter_by(chal=x.id).all() ]

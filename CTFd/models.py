@@ -63,6 +63,8 @@ class Challenges(db.Model):
     flags = db.Column(db.Text)
     hidden = db.Column(db.Boolean)
     instanced = db.Column(db.Boolean)
+    generated = db.Column(db.Boolean)
+    generator = db.Column(db.Text)
 
     def __init__(self, name, description, value, category, flags):
         self.name = name
@@ -70,6 +72,8 @@ class Challenges(db.Model):
         self.value = value
         self.category = category
         self.flags = json.dumps(flags)
+        self.generated = False
+        self.generator = ""
 
     def __repr__(self):
         return '<chal %r>' % self.name

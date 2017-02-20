@@ -60,7 +60,7 @@ def create_app(config='CTFd.config.Config'):
         if version and (StrictVersion(version) < StrictVersion(__version__)): ## Upgrading from an older version of CTFd
             migrate_upgrade()
             set_config('ctf_version', __version__)
-            
+
         if not get_config('ctf_theme'):
             set_config('ctf_theme', 'original')
 
