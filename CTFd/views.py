@@ -6,8 +6,7 @@ from flask import current_app as app, render_template, request, redirect, abort,
 from jinja2.exceptions import TemplateNotFound
 from passlib.hash import bcrypt_sha256
 
-from CTFd.utils import authed, is_setup, validate_url, get_config, set_config, sha512, cache, ctftime, view_after_ctf, ctf_started, \
-    is_admin
+from CTFd.utils import authed, is_setup, validate_url, get_config, set_config, sha512, cache, ctftime, view_after_ctf, ctf_started, is_admin, get_generator, get_file_dynamic
 from CTFd.models import db, Teams, Solves, Awards, Files, Pages, Challenges
 from binascii import crc32
 
@@ -234,46 +233,13 @@ def file_handler(path):
 
     if f.generated:
         chal = Challenges.query.filter_by(id=f.chal).first_or_404()
-        team = Teams.query.filter_by(id=session.get('id')).first()
-        gen_folder = os.path.join(os.path.normpath(app.root_path), app.config['GENERATOR_FOLDER'])
-        gen_script = os.path.join(gen_folder, chal.generator)
-        print "Generator script {}".format(gen_script)
-
-        file_stream = None
-        if os.path.isfile(gen_script):
-            hash = 0
-            with open(gen_script, 'r') as f:
-                hash = crc32(f.read()) & 0xffffffff
-            gen_name = "generator_{:08x}".format(hash)
-            print "Importing ({}, {})".format(gen_name, gen_script)
-
-            gen_module = None
-            cwd = os.getcwd()
-            gen_script_dir, gen_script_name = os.path.split(gen_script)
-            os.chdir(gen_script_dir)
-            try:
-                gen_module = imp.load_source(gen_name, gen_script)
-            except Exception as e:
-                print "Importing generator module from {} failed with exception {}".format(gen_script, e)
-            except:
-                print "Non-exception object raised while importing from {}".format(gen_script)
-
-            if gen_module:
-                if hasattr(gen_module, 'gen_file'):
-                    path_rel = os.path.relpath(os.path.join(gen_folder, path), start=gen_script_dir)
-                    try:
-                        file_stream = gen_module.gen_file(team.seed, path_rel)
-                    except Exception as e:
-                        print "Execution of generator module from {} failed with exception {}".format(gen_script, e)
-                    except:
-                        print "Non-exception object raised while executing module from {}".format(gen_script)
-                else:
-                    print "Generator module from {} missing gen_file function".format(gen_script)
-            os.chdir(cwd)
+        generator = get_generator(chal.generator)
+        file_stream = get_file_dynamic(generator, path)
 
         if file_stream:
             return send_file(file_stream, attachment_filename=os.path.basename(path))
         else:
+            print("WARNING: file request for '{}' returned 404 due to None output of {}".format(path, generator.__name__))
             abort(404)
 
     else:

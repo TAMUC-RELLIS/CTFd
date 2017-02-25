@@ -679,6 +679,27 @@ def get_instance_dynamic(generator):
 
     return params, files
 
+def get_file_dynamic(generator, path):
+    file_stream = None
+
+    if generator:
+        gen_folder = os.path.join(os.path.normpath(app.root_path), app.config['GENERATOR_FOLDER'])
+        team = Teams.query.filter_by(id=session.get('id')).first()
+        gen_script_dir, gen_script_name = os.path.split(generator.__file__)
+
+        if hasattr(generator, 'gen_file'):
+            path_rel = os.path.relpath(os.path.join(gen_folder, path), start=gen_script_dir)
+            try:
+                file_stream = generator.gen_file(team.seed, path_rel)
+            except Exception as e:
+                print("Execution of generator module {} failed with exception {}".format(generator.__name__, e))
+            except:
+                print("Non-exception object raised while executing module {}".format(generator.__name__))
+        else:
+            print("Generator module from {} missing gen_file function".format(generator.__name__))
+
+    return file_stream
+
 def update_generated_files(chalid, files):
     files_db_objs = Files.query.add_columns('location').filter_by(chal=chalid).all()
     files_db = [f.location for f in files_db_objs]
