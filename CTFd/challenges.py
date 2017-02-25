@@ -40,7 +40,7 @@ def choose_instance(chalid):
     return instance
 
 
-def from_instance(chal_id):
+def get_instance_static(chal_id):
     instance = choose_instance(chal_id)
 
     params = None
@@ -62,14 +62,11 @@ def from_instance(chal_id):
     return params, files
 
 
-def dispatch_generator(generator):
+def get_generator(generator_path):
     gen_folder = os.path.join(os.path.normpath(app.root_path), app.config['GENERATOR_FOLDER'])
-    gen_script = os.path.join(gen_folder, generator)
-    team = Teams.query.filter_by(id=session.get('id')).first()
+    gen_script = os.path.join(gen_folder, generator_path)
 
-    params = None
-    files = None
-
+    gen_module = None
     if os.path.isfile(gen_script):
         hash = 0
         with open(gen_script, 'r') as f:
@@ -77,7 +74,6 @@ def dispatch_generator(generator):
         gen_name = "generator_{:08x}".format(hash)
         print("Importing ({}, {})".format(gen_name, gen_script))
 
-        gen_module = None
         gen_script_dir, gen_script_name = os.path.split(gen_script)
 
         try:
@@ -86,22 +82,32 @@ def dispatch_generator(generator):
             print("Importing generator module from {} failed with exception {}".format(gen_script, e))
         except:
             print("Non-exception object raised while importing from {}".format(gen_script))
-
-        if gen_module:
-            if hasattr(gen_module, 'gen_config'):
-                try:
-                    params, files = gen_module.gen_config(team.seed)
-                except Exception as e:
-                    print("Execution of generator module from {} failed with exception {}".format(gen_script, e))
-                except:
-                    print("Non-exception object raised while executing module from {}".format(gen_script))
-                if files:
-                    file_path_prefix = os.path.relpath(gen_script_dir, start=gen_folder)
-                    files = [os.path.normpath(os.path.join(file_path_prefix, file)) for file in files]
-            else:
-                print("Generator module from {} missing gen_config function".format(gen_script))
     else:
         print("ERROR: Generator script '{}' not found".format(gen_script))
+
+    return gen_module
+
+def get_instance_dynamic(generator):
+    params = None
+    files = None
+
+    if generator:
+        gen_folder = os.path.join(os.path.normpath(app.root_path), app.config['GENERATOR_FOLDER'])
+        team = Teams.query.filter_by(id=session.get('id')).first()
+        gen_script_dir, gen_script_name = os.path.split(generator.__file__)
+
+        if hasattr(generator, 'gen_config'):
+            try:
+                params, files = generator.gen_config(team.seed)
+            except Exception as e:
+                print("Execution of generator module {} failed with exception {}".format(generator.__name__, e))
+            except:
+                print("Non-exception object raised while executing module {}".format(generator.__name__))
+            if files:
+                file_path_prefix = os.path.relpath(gen_script_dir, start=gen_folder)
+                files = [os.path.normpath(os.path.join(file_path_prefix, file)) for file in files]
+        else:
+            print("Generator module from {} missing gen_config function".format(generator.__name__))
 
     return params, files
 
@@ -169,11 +175,12 @@ def chals():
 
             if chal.instanced:
                 if chal.generated:
-                    params, files = dispatch_generator(chal.generator)
+                    generator = get_generator(chal.generator)
+                    params, files = get_instance_dynamic(generator)
                     if files:
                         update_generated_files(chal.id, files)
                 else:
-                    params, files = from_instance(chal.id)
+                    params, files = get_instance_static(chal.id)
 
                 if params == None or files == None:
                     print("WARNING: Skipping challenge id {} due to instancing error".format(chal.id))
@@ -333,9 +340,10 @@ def chal(chalid):
 
             if chal.instanced:
                 if chal.generated:
-                    params, files = dispatch_generator(chal.generator)
+                    generator = get_generator(chal.generator)
+                    params, files = get_instance_dynamic(generator)
                 else:
-                    params, files = from_instance(chal.id)
+                    params, files = get_instance_static(chal.id)
 
                 if params == None or files == None:
                     print("WARNING: challenge id {} cannot be solved due to instancing errror".format(chal.id))
