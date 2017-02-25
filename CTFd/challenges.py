@@ -3,6 +3,7 @@ import re
 import time
 import imp
 import os
+import json
 
 from flask import current_app as app, render_template, request, redirect, abort, jsonify, json as json_mod, url_for, session, Blueprint
 
@@ -33,7 +34,82 @@ def choose_instance(chalid=0):
     if instances:
         hash_keys = [session.get('id'), chalid]
         instance = hash_choice(instances, hash_keys)
+    else:
+        print("ERROR: No instances found for challenge id {}".format(chalid))
     return instance
+
+
+def from_instance(chal_id):
+    instance = choose_instance(chal_id)
+
+    params = {}
+    files = []
+
+    if instance:
+        try:
+            params = json_mod.loads(instance.params)
+        except ValueError:
+            print("ERROR: JSON decode eror on string: {}".format(instance.params))
+
+        filemap_query = FileMappings.query.filter_by(instance=instance.id)
+        fileids = [mapping.file for mapping in filemap_query.all()]
+
+        file_query = Files.query.filter(Files.id.in_(fileids))
+        files = [str(f.location) for f in file_query.all()]
+
+
+    return params, files
+
+
+def dispatch_generator(generator):
+    gen_folder = os.path.join(os.path.normpath(app.root_path), app.config['GENERATOR_FOLDER'])
+    gen_script = os.path.join(gen_folder, generator)
+
+    params = {}
+    files = []
+
+    if os.path.isfile(gen_script):
+        hash = 0
+        with open(gen_script, 'r') as f:
+            hash = crc32(f.read()) & 0xffffffff
+        gen_name = "generator_{:08x}".format(hash)
+        print("Importing ({}, {})".format(gen_name, gen_script))
+
+        gen_module = None
+        gen_script_dir, gen_script_name = os.path.split(gen_script)
+
+        try:
+            gen_module = imp.load_source(gen_name, gen_script)
+        except Exception as e:
+            print("Importing generator module from {} failed with exception {}".format(gen_script, e))
+        except:
+            print("Non-exception object raised while importing from {}".format(gen_script))
+
+        if gen_module:
+            if hasattr(gen_module, 'gen_config'):
+                try:
+                    params, files = gen_module.gen_config(session['id'])
+                except Exception as e:
+                    print("Execution of generator module from {} failed with exception {}".format(gen_script, e))
+                except:
+                    print("Non-exception object raised while executing module from {}".format(gen_script))
+                if files:
+                    file_path_prefix = os.path.relpath(gen_script_dir, start=gen_folder)
+                    files = [os.path.normpath(os.path.join(file_path_prefix, file)) for file in files]
+            else:
+                print("Generator module from {} missing gen_config function".format(gen_script))
+    else:
+        print("ERROR: Generator script '{}' not found".format(gen_script))
+
+    return params, files
+
+def update_generated_files(chalid, files):
+    files_db_objs = Files.query.add_columns('location').filter_by(chal=chalid).all()
+    files_db = [f.location for f in files_db_objs]
+    for file in files:
+        if file not in files_db:
+            db.session.add(Files(chalid, file, True))
+    db.session.commit()
 
 
 @challenges.route('/challenges', methods=['GET'])
@@ -73,85 +149,42 @@ def chals():
             else:
                 return redirect(url_for('views.static_html'))
     if user_can_view_challenges() and (ctf_started() or is_admin()):
-        chals = Challenges.query.filter(or_(Challenges.hidden != True, Challenges.hidden == None)).add_columns('id', 'name', 'value', 'description', 'category', 'instanced', 'generated', 'generator').order_by(Challenges.value).all()
+        columns = ('id', 'name', 'value', 'description', 'category',
+                   'instanced', 'generated', 'generator')
+        hidden_flt = or_(Challenges.hidden is not True, Challenges.hidden is None)
+        chals = Challenges.query.filter(hidden_flt).add_columns(*columns)
+        chals = chals.order_by(Challenges.value).all()
 
-        json = {'game': []}
-        for x in chals:
-            tags = [tag.tag for tag in Tags.query.add_columns('tag').filter_by(chal=x[1]).all()]
-            if x[6]: # If instanced
-                name = x[2]
-                desc = x[4]
+        game = []
 
-                files = []
-                params = {}
-                if x[7]:
-                    gen_folder = os.path.join(os.path.normpath(app.root_path), app.config['GENERATOR_FOLDER'])
-                    gen_script = os.path.join(gen_folder, x[8])
-                    print "Generator script {}".format(gen_script)
+        for chal in chals:
 
-                    if os.path.isfile(gen_script):
-                        hash = 0
-                        with open(gen_script, 'r') as f:
-                            hash = crc32(f.read()) & 0xffffffff
-                        gen_name = "generator_{:08x}".format(hash)
-                        print "Importing ({}, {})".format(gen_name, gen_script)
+            tags_query = Tags.query.add_columns('tag').filter_by(chal=chal.name)
+            tags = [tag.tag for tag in tags_query.all()]
 
-                        gen_module = None
-                        cwd = os.getcwd()
-                        gen_script_dir, gen_script_name = os.path.split(gen_script)
-                        os.chdir(gen_script_dir)
-                        try:
-                            gen_module = imp.load_source(gen_name, gen_script)
-                        except Exception as e:
-                            print "Importing generator module from {} failed with exception {}".format(gen_script, e)
-                        except:
-                            print "Non-exception object raised while importing from {}".format(gen_script)
+            name = chal.name
+            desc = chal.description
 
-                        if gen_module:
-                            if hasattr(gen_module, 'gen_config'):
-                                try:
-                                    params, files = gen_module.gen_config(session['id'])
-                                except Exception as e:
-                                    print "Execution of generator module from {} failed with exception {}".format(gen_script, e)
-                                except:
-                                    print "Non-exception object raised while executing module from {}".format(gen_script)
-                                if files:
-                                    file_path_prefix = os.path.relpath(gen_script_dir, start=gen_folder)
-                                    files = [os.path.join(file_path_prefix, file) for file in files]
-
-                                    files_db_objs = Files.query.add_columns('location').filter_by(chal=x[1]).all()
-                                    files_db = [f.location for f in files_db_objs]
-                                    for file in files:
-                                        if file not in files_db:
-                                            db.session.add(Files(x[1], file, True))
-                                    db.session.commit()
-
-                            else:
-                                print "Generator module from {} missing gen_config function".format(gen_script)
-
-                        os.chdir(cwd)
-
-
+            if chal.instanced:
+                if chal.generated:
+                    params, files = dispatch_generator(chal.generator)
+                    update_generated_files(chal.id, files)
                 else:
-                    instance = choose_instance(x[1]);
-                    if instance:
-                        try:
-                            params = json_mod.loads(instance.params)
-                        except ValueError:
-                            print "JSON decode eror on string: {}".format(instance.params)
-                    fileids = [ mapping.file for mapping in FileMappings.query.filter_by(instance=instance.id).all()]
-                    files = [ str(f.location) for f in Files.query.filter(Files.id.in_(fileids)).all() ]
+                    params, files = from_instance(chal.id)
 
-                name = Template(name).render(params)
-                desc = Template(desc).render(params)
+                name = Template(chal.name).render(params)
+                desc = Template(chal.description).render(params)
 
-                json['game'].append({'id':x[1], 'name':name, 'value':x[3], 'description':desc, 'category':x[5], 'files':files, 'tags':tags})
             else:
-                files = [ str(f.location) for f in Files.query.filter_by(chal=x.id).all() ]
-                json['game'].append({'id':x[1], 'name':x[2], 'value':x[3], 'description':x[4], 'category':x[5], 'files':files, 'tags':tags})
+                files_query = Files.query.filter_by(chal=chal.id)
+                files = [str(f.location) for f in files_query.all()]
+
+            game.append({'id': chal.id, 'name': name, 'tags': tags,
+                         'description': desc, 'value': chal.value,
+                         'files': files, 'category': chal.category})
 
         db.session.close()
-        return jsonify(json)
+        return jsonify({'game': game})
     else:
         db.session.close()
         return redirect(url_for('auth.login', next='chals'))
@@ -294,11 +327,13 @@ def chal(chalid):
                         try:
                             params = json_mod.loads(instance.params)
                         except ValueError:
-                            print "JSON decode eror on string: {}".format(instance.params)
-                    x['flag'] = Template(x['flag']).render(params)
+                            print("JSON decode eror on string: {}".format(instance.params))
+                    rendered_flag = Template(x['flag']).render(params)
+                    print "Key template '{}' render to '{}'".format(x['flag'], rendered_flag)
+                    x['flag'] = rendered_flag
 
-                if x['type'] == 0: #static key
-                    print(x['flag'], key.strip().lower())
+                if x['type'] == 0:  # static key
+                    # A consequence of the line below is that the flag must not be empty string. If this is the case, the problem is unsolvable
                     if x['flag'] and x['flag'].strip().lower() == key.strip().lower():
                         if ctftime():
                             solve = Solves(chalid=chalid, teamid=session['id'], ip=get_ip(), flag=key)
