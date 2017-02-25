@@ -41,8 +41,8 @@ def choose_instance(chalid):
 def from_instance(chal_id):
     instance = choose_instance(chal_id)
 
-    params = {}
-    files = []
+    params = None
+    files = None
 
     if instance:
         try:
@@ -64,8 +64,8 @@ def dispatch_generator(generator):
     gen_folder = os.path.join(os.path.normpath(app.root_path), app.config['GENERATOR_FOLDER'])
     gen_script = os.path.join(gen_folder, generator)
 
-    params = {}
-    files = []
+    params = None
+    files = None
 
     if os.path.isfile(gen_script):
         hash = 0
@@ -167,9 +167,14 @@ def chals():
             if chal.instanced:
                 if chal.generated:
                     params, files = dispatch_generator(chal.generator)
-                    update_generated_files(chal.id, files)
+                    if files:
+                        update_generated_files(chal.id, files)
                 else:
                     params, files = from_instance(chal.id)
+
+                if params == None or files == None:
+                    print("WARNING: Skipping challenge id {} due to instancing error".format(chal.id))
+                    continue
 
                 name = Template(chal.name).render(params)
                 desc = Template(chal.description).render(params)
@@ -323,13 +328,19 @@ def chal(chalid):
                     'message': "You have 0 tries remaining"
                 })
 
+            if chal.instanced:
+                if chal.generated:
+                    params, files = dispatch_generator(chal.generator)
+                else:
+                    params, files = from_instance(chal.id)
+
+                if params == None or files == None:
+                    print("WARNING: challenge id {} cannot be solved due to instancing errror".format(chal.id))
+                    logger.warn("[{0}] {1} submitted {2} with kpm {3} [INSTANCE_ERROR]".format(*data))
+                    return '-1'
+
             for x in keys:
                 if chal.instanced:
-                    if chal.generated:
-                        params, files = dispatch_generator(chal.generator)
-                    else:
-                        params, files = from_instance(chal.id)
-
                     rendered_flag = Template(x['flag']).render(params)
                     print "Key template '{}' render to '{}'".format(x['flag'], rendered_flag)
                     x['flag'] = rendered_flag
