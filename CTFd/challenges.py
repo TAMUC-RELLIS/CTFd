@@ -5,31 +5,30 @@ import imp
 import os
 import json
 
-from flask import current_app as app, render_template, request, redirect, abort, jsonify, json as json_mod, url_for, session, Blueprint
+from flask import current_app as app, render_template, request, redirect, jsonify, json as json_mod, url_for, session, Blueprint
 
 from CTFd.utils import ctftime, view_after_ctf, authed, unix_time, get_kpm, user_can_view_challenges, is_admin, get_config, get_ip, is_verified, ctf_started, ctf_ended, ctf_name
-from CTFd.models import db, Challenges, Files, Solves, WrongKeys, Keys, FileMappings, Instances, Tags, Teams, Awards
+from CTFd.models import db, Challenges, Files, Solves, WrongKeys, FileMappings, Instances, Tags, Teams, Awards
 
-from flask import render_template, request, redirect, jsonify, url_for, session, Blueprint
 from sqlalchemy.sql import or_
-
-from CTFd.utils import ctftime, view_after_ctf, authed, unix_time, get_kpm, user_can_view_challenges, is_admin, get_config, get_ip, is_verified, ctf_started, ctf_ended, ctf_name
-from CTFd.models import db, Challenges, Files, Solves, WrongKeys, Tags, Teams, Awards
 
 from jinja2 import Template
 from binascii import crc32
 
 challenges = Blueprint('challenges', __name__)
 
-def hash_choice(items, keys):
-     code = ""
-     for k in keys:
-         code += str(crc32(str(k)))
-     index = crc32(code) % len(items)
-     return items[index]
 
-def choose_instance(chalid=0):
-    instances = Instances.query.filter_by(chal=chalid).order_by(Instances.id.asc()).all()
+def hash_choice(items, keys):
+    code = ""
+    for k in keys:
+        code += str(crc32(str(k)))
+    index = crc32(code) % len(items)
+    return items[index]
+
+
+def choose_instance(chalid):
+    instances = Instances.query.filter_by(chal=chalid) \
+                         .order_by(Instances.id.asc()).all()
     instance = None
     if instances:
         hash_keys = [session.get('id'), chalid]
@@ -117,10 +116,10 @@ def challenges_view():
     errors = []
     start = get_config('start') or 0
     end = get_config('end') or 0
-    if not is_admin(): # User is not an admin
+    if not is_admin():  # User is not an admin
         if not ctftime():
             # It is not CTF time
-            if view_after_ctf(): # But we are allowed to view after the CTF ends
+            if view_after_ctf():  # But we are allowed to view after the CTF ends
                 pass
             else:  # We are NOT allowed to view after the CTF ends
                 if get_config('start') and not ctf_started():
@@ -128,9 +127,9 @@ def challenges_view():
                 if (get_config('end') and ctf_ended()) and not view_after_ctf():
                     errors.append('{} has ended'.format(ctf_name()))
                 return render_template('chals.html', errors=errors, start=int(start), end=int(end))
-        if get_config('verify_emails') and not is_verified(): # User is not confirmed
+        if get_config('verify_emails') and not is_verified():  # User is not confirmed
             return redirect(url_for('auth.confirm_user'))
-    if user_can_view_challenges(): # Do we allow unauthenticated users?
+    if user_can_view_challenges():  # Do we allow unauthenticated users?
         if get_config('start') and not ctf_started():
             errors.append('{} has not started yet'.format(ctf_name()))
         if (get_config('end') and ctf_ended()) and not view_after_ctf():
@@ -194,7 +193,12 @@ def chals():
 def solves_per_chal():
     if not user_can_view_challenges():
         return redirect(url_for('auth.login', next=request.path))
-    solves_sub = db.session.query(Solves.chalid, db.func.count(Solves.chalid).label('solves')).join(Teams, Solves.teamid == Teams.id).filter(Teams.banned == False).group_by(Solves.chalid).subquery()
+    solves_counter = db.func.count(Solves.chalid).label('solves')
+    solves_sub = db.session.query(Solves.chalid, solves_counter) \
+                           .join(Teams, Solves.teamid == Teams.id) \
+                           .filter(not Teams.banned) \
+                           .group_by(Solves.chalid).subquery()
+
     solves = db.session.query(solves_sub.columns.chalid, solves_sub.columns.solves, Challenges.name) \
                        .join(Challenges, solves_sub.columns.chalid == Challenges.id).all()
     json = {}
@@ -213,7 +217,8 @@ def solves(teamid=None):
         if is_admin():
             solves = Solves.query.filter_by(teamid=session['id']).all()
         elif user_can_view_challenges():
-            solves = Solves.query.join(Teams, Solves.teamid == Teams.id).filter(Solves.teamid == session['id'], Teams.banned == False).all()
+            solves = Solves.query.join(Teams, Solves.teamid == Teams.id) \
+                           .filter(Solves.teamid == session['id'], not Teams.banned).all()
         else:
             return redirect(url_for('auth.login', next='solves'))
     else:
@@ -270,7 +275,9 @@ def fails(teamid):
 def who_solved(chalid):
     if not user_can_view_challenges():
         return redirect(url_for('auth.login', next=request.path))
-    solves = Solves.query.join(Teams, Solves.teamid == Teams.id).filter(Solves.chalid == chalid, Teams.banned == False).order_by(Solves.date.asc())
+    solves = Solves.query.join(Teams, Solves.teamid == Teams.id) \
+                   .filter(Solves.chalid == chalid, not Teams.banned) \
+                   .order_by(Solves.date.asc())
     json = {'teams': []}
     for solve in solves:
         json['teams'].append({'id': solve.team.id, 'name': solve.team.name, 'date': solve.date})
@@ -343,7 +350,7 @@ def chal(chalid):
                         logger.info("[{0}] {1} submitted {2} with kpm {3} [CORRECT]".format(*data))
                         # return '1' # key was correct
                         return jsonify({'status': '1', 'message': 'Correct'})
-                elif x['type'] == 1: # regex
+                elif x['type'] == 1:  # regex
                     res = re.match(x['flag'], key, re.IGNORECASE)
                     if res and res.group() == key:
                         if ctftime():
