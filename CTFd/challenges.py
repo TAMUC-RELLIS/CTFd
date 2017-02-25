@@ -1,124 +1,19 @@
 import logging
 import re
 import time
-import imp
 import os
 import json
 
 from flask import current_app as app, render_template, request, redirect, jsonify, json as json_mod, url_for, session, Blueprint
 
-from CTFd.utils import ctftime, view_after_ctf, authed, unix_time, get_kpm, user_can_view_challenges, is_admin, get_config, get_ip, is_verified, ctf_started, ctf_ended, ctf_name
-from CTFd.models import db, Challenges, Files, Solves, WrongKeys, FileMappings, Instances, Tags, Teams, Awards
+from CTFd.utils import ctftime, view_after_ctf, authed, unix_time, get_kpm, user_can_view_challenges, is_admin, get_config, get_ip, is_verified, ctf_started, ctf_ended, ctf_name, get_instance_static, get_generator, get_instance_dynamic, update_generated_files
+from CTFd.models import db, Challenges, Files, Solves, WrongKeys, Tags, Teams, Awards
 
 from sqlalchemy.sql import or_
 
 from jinja2 import Template
-from binascii import crc32
 
 challenges = Blueprint('challenges', __name__)
-
-
-def hash_choice(items, keys):
-    code = ""
-    for k in keys:
-        code += str(crc32(str(k)))
-    index = crc32(code) % len(items)
-    return items[index]
-
-
-def choose_instance(chalid):
-    instances = Instances.query.filter_by(chal=chalid) \
-                         .order_by(Instances.id.asc()).all()
-    team = Teams.query.filter_by(id=session.get('id')).first()
-
-    instance = None
-    if instances:
-        hash_keys = [team.seed]
-        instance = hash_choice(instances, hash_keys)
-    else:
-        print("ERROR: No instances found for challenge id {}".format(chalid))
-    return instance
-
-
-def get_instance_static(chal_id):
-    instance = choose_instance(chal_id)
-
-    params = None
-    files = None
-
-    if instance:
-        try:
-            params = json_mod.loads(instance.params)
-        except ValueError:
-            print("ERROR: JSON decode eror on string: {}".format(instance.params))
-
-        filemap_query = FileMappings.query.filter_by(instance=instance.id)
-        fileids = [mapping.file for mapping in filemap_query.all()]
-
-        file_query = Files.query.filter(Files.id.in_(fileids))
-        files = [str(f.location) for f in file_query.all()]
-
-
-    return params, files
-
-
-def get_generator(generator_path):
-    gen_folder = os.path.join(os.path.normpath(app.root_path), app.config['GENERATOR_FOLDER'])
-    gen_script = os.path.join(gen_folder, generator_path)
-
-    gen_module = None
-    if os.path.isfile(gen_script):
-        hash = 0
-        with open(gen_script, 'r') as f:
-            hash = crc32(f.read()) & 0xffffffff
-        gen_name = "generator_{:08x}".format(hash)
-        print("Importing ({}, {})".format(gen_name, gen_script))
-
-        gen_script_dir, gen_script_name = os.path.split(gen_script)
-
-        try:
-            gen_module = imp.load_source(gen_name, gen_script)
-        except Exception as e:
-            print("Importing generator module from {} failed with exception {}".format(gen_script, e))
-        except:
-            print("Non-exception object raised while importing from {}".format(gen_script))
-    else:
-        print("ERROR: Generator script '{}' not found".format(gen_script))
-
-    return gen_module
-
-def get_instance_dynamic(generator):
-    params = None
-    files = None
-
-    if generator:
-        gen_folder = os.path.join(os.path.normpath(app.root_path), app.config['GENERATOR_FOLDER'])
-        team = Teams.query.filter_by(id=session.get('id')).first()
-        gen_script_dir, gen_script_name = os.path.split(generator.__file__)
-
-        if hasattr(generator, 'gen_config'):
-            try:
-                params, files = generator.gen_config(team.seed)
-            except Exception as e:
-                print("Execution of generator module {} failed with exception {}".format(generator.__name__, e))
-            except:
-                print("Non-exception object raised while executing module {}".format(generator.__name__))
-            if files:
-                file_path_prefix = os.path.relpath(gen_script_dir, start=gen_folder)
-                files = [os.path.normpath(os.path.join(file_path_prefix, file)) for file in files]
-        else:
-            print("Generator module from {} missing gen_config function".format(generator.__name__))
-
-    return params, files
-
-def update_generated_files(chalid, files):
-    files_db_objs = Files.query.add_columns('location').filter_by(chal=chalid).all()
-    files_db = [f.location for f in files_db_objs]
-    for file in files:
-        if file not in files_db:
-            db.session.add(Files(chalid, file, True))
-    db.session.commit()
-
 
 @challenges.route('/challenges', methods=['GET'])
 def challenges_view():
