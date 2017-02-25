@@ -323,24 +323,20 @@ def chal(chalid):
                     'message': "You have 0 tries remaining"
                 })
 
-            instance = None
-            if chal.instanced:
-                instance = choose_instance(chal.id)
-
             for x in keys:
                 if chal.instanced:
-                    params = {}
-                    if instance:
-                        try:
-                            params = json_mod.loads(instance.params)
-                        except ValueError:
-                            print("JSON decode eror on string: {}".format(instance.params))
+                    if chal.generated:
+                        params, files = dispatch_generator(chal.generator)
+                    else:
+                        params, files = from_instance(chal.id)
+
                     rendered_flag = Template(x['flag']).render(params)
                     print "Key template '{}' render to '{}'".format(x['flag'], rendered_flag)
                     x['flag'] = rendered_flag
 
                 if x['type'] == 0:  # static key
-                    # A consequence of the line below is that the flag must not be empty string. If this is the case, the problem is unsolvable
+                    # A consequence of the line below is that the flag must not be empty string.
+                    # If this is the case, the problem is unsolvable
                     if x['flag'] and x['flag'].strip().lower() == key.strip().lower():
                         if ctftime():
                             solve = Solves(chalid=chalid, teamid=session['id'], ip=get_ip(), flag=key)
