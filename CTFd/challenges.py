@@ -29,9 +29,11 @@ def hash_choice(items, keys):
 def choose_instance(chalid):
     instances = Instances.query.filter_by(chal=chalid) \
                          .order_by(Instances.id.asc()).all()
+    team = Teams.query.filter_by(id=session.get('id')).first()
+
     instance = None
     if instances:
-        hash_keys = [session.get('id'), chalid]
+        hash_keys = [team.seed]
         instance = hash_choice(instances, hash_keys)
     else:
         print("ERROR: No instances found for challenge id {}".format(chalid))
@@ -63,6 +65,7 @@ def from_instance(chal_id):
 def dispatch_generator(generator):
     gen_folder = os.path.join(os.path.normpath(app.root_path), app.config['GENERATOR_FOLDER'])
     gen_script = os.path.join(gen_folder, generator)
+    team = Teams.query.filter_by(id=session.get('id')).first()
 
     params = None
     files = None
@@ -87,7 +90,7 @@ def dispatch_generator(generator):
         if gen_module:
             if hasattr(gen_module, 'gen_config'):
                 try:
-                    params, files = gen_module.gen_config(session['id'])
+                    params, files = gen_module.gen_config(team.seed)
                 except Exception as e:
                     print("Execution of generator module from {} failed with exception {}".format(gen_script, e))
                 except:

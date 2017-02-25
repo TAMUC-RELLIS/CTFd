@@ -3,6 +3,7 @@ import hashlib
 import json
 from socket import inet_aton, inet_ntoa
 from struct import unpack, pack, error as struct_error
+from os import urandom
 
 from flask_sqlalchemy import SQLAlchemy
 from passlib.hash import bcrypt_sha256
@@ -177,11 +178,13 @@ class Teams(db.Model):
     verified = db.Column(db.Boolean, default=False)
     admin = db.Column(db.Boolean, default=False)
     joined = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    seed = db.Column(db.String(32))
 
     def __init__(self, name, email, password):
         self.name = name
         self.email = email
         self.password = bcrypt_sha256.encrypt(str(password))
+        self.seed = urandom(16).encode('hex')
 
     def __repr__(self):
         return '<team %r>' % self.name
@@ -207,6 +210,9 @@ class Teams(db.Model):
             return "%d%s" % (i, "tsnrhtdd"[(i / 10 % 10 != 1) * (k < 4) * k::4])
         except ValueError:
             return 0
+
+    def reseed(self):
+        self.seed = urandom(16).encode('hex')
 
 
 class Solves(db.Model):

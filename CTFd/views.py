@@ -234,6 +234,7 @@ def file_handler(path):
 
     if f.generated:
         chal = Challenges.query.filter_by(id=f.chal).first_or_404()
+        team = Teams.query.filter_by(id=session.get('id')).first()
         gen_folder = os.path.join(os.path.normpath(app.root_path), app.config['GENERATOR_FOLDER'])
         gen_script = os.path.join(gen_folder, chal.generator)
         print "Generator script {}".format(gen_script)
@@ -261,7 +262,7 @@ def file_handler(path):
                 if hasattr(gen_module, 'gen_file'):
                     path_rel = os.path.relpath(os.path.join(gen_folder, path), start=gen_script_dir)
                     try:
-                        file_stream = gen_module.gen_file(session['id'], path_rel)
+                        file_stream = gen_module.gen_file(team.seed, path_rel)
                     except Exception as e:
                         print "Execution of generator module from {} failed with exception {}".format(gen_script, e)
                     except:
