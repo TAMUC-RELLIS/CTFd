@@ -1,12 +1,16 @@
 import logging
 import re
 import time
-import os
 import json
+import traceback
 
-from flask import current_app as app, render_template, request, redirect, jsonify, json as json_mod, url_for, session, Blueprint
+from flask import render_template, request, redirect, jsonify, url_for, session, Blueprint
 
-from CTFd.utils import ctftime, view_after_ctf, authed, unix_time, get_kpm, user_can_view_challenges, is_admin, get_config, get_ip, is_verified, ctf_started, ctf_ended, ctf_name, get_instance_static, get_generator, get_instance_dynamic, update_generated_files
+from CTFd.utils import ctftime, view_after_ctf, authed, unix_time, get_kpm, \
+    user_can_view_challenges, is_admin, get_config, get_ip, is_verified, \
+    ctf_started, ctf_ended, ctf_name, get_instance_static, get_generator, \
+    get_instance_dynamic, update_generated_files
+
 from CTFd.models import db, Challenges, Files, Solves, WrongKeys, Tags, Teams, Awards
 
 from sqlalchemy.sql import or_
@@ -14,6 +18,7 @@ from sqlalchemy.sql import or_
 from jinja2 import Template
 
 challenges = Blueprint('challenges', __name__)
+
 
 @challenges.route('/challenges', methods=['GET'])
 def challenges_view():
@@ -59,6 +64,7 @@ def chals():
         chals = chals.order_by(Challenges.value).all()
 
         game = []
+        instance_log = logging.getLogger('instancing')
 
         for chal in chals:
 
@@ -69,16 +75,20 @@ def chals():
             desc = chal.description
 
             if chal.instanced:
-                if chal.generated:
-                    generator = get_generator(chal.generator)
-                    params, files = get_instance_dynamic(generator)
-                    if files:
-                        update_generated_files(chal.id, files)
-                else:
-                    params, files = get_instance_static(chal.id)
+                try:
+                    if chal.generated:
+                        generator = get_generator(chal.generator)
+                        params, files = get_instance_dynamic(generator)
+                        if files:
+                            update_generated_files(chal.id, files)
+                    else:
+                        params, files = get_instance_static(chal.id)
 
-                if params == None or files == None:
-                    print("WARNING: Skipping challenge id {} due to instancing error".format(chal.id))
+                    assert params and files
+                except Exception:
+                    instance_log.exception("instancing error while generating "
+                                           "chal list in challenge #{0.id} "
+                                           "({0.name})".format(chal))
                     continue
 
                 name = Template(chal.name).render(params)
@@ -203,6 +213,7 @@ def chal(chalid):
     if authed() and is_verified() and (ctf_started() or view_after_ctf()):
         fails = WrongKeys.query.filter_by(teamid=session['id'], chalid=chalid).count()
         logger = logging.getLogger('keys')
+        instance_log = logging.getLogger('instancing')
         data = (time.strftime("%m/%d/%Y %X"), session['username'].encode('utf-8'), request.form['key'].encode('utf-8'), get_kpm(session['id']))
         print("[{0}] {1} submitted {2} with kpm {3}".format(*data))
 
@@ -234,15 +245,19 @@ def chal(chalid):
                 })
 
             if chal.instanced:
-                if chal.generated:
-                    generator = get_generator(chal.generator)
-                    params, files = get_instance_dynamic(generator)
-                else:
-                    params, files = get_instance_static(chal.id)
-
-                if params == None or files == None:
-                    print("WARNING: challenge id {} cannot be solved due to instancing errror".format(chal.id))
-                    logger.warn("[{0}] {1} submitted {2} with kpm {3} [INSTANCE_ERROR]".format(*data))
+                try:
+                    if chal.generated:
+                        generator = get_generator(chal.generator)
+                        params, files = get_instance_dynamic(generator)
+                    else:
+                        params, files = get_instance_static(chal.id)
+                    assert params and files
+                except Exception:
+                    instance_log.exception("instancing error during key "
+                                           "submission in challenge #{0.id} "
+                                           "({0.name})".format(chal))
+                    logger.exception("[{0}] {1} submitted {2} with kpm {3}"
+                                     " [INSTANCE_ERROR]".format(*data))
                     return '-1'
 
             for x in keys:
