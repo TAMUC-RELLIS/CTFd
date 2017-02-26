@@ -59,7 +59,7 @@ def init_logs(app):
     logs = [
         os.path.join(parent, 'logs', 'keys.log'),
         os.path.join(parent, 'logs', 'logins.log'),
-        os.path.join(parent, 'logs', 'registers.log')
+        os.path.join(parent, 'logs', 'registers.log'),
         os.path.join(parent, 'logs', 'instancing.log')
     ]
 

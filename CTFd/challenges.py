@@ -2,7 +2,6 @@ import logging
 import re
 import time
 import json
-import traceback
 
 from flask import render_template, request, redirect, jsonify, url_for, session, Blueprint
 
