@@ -18,7 +18,7 @@ import time
 import urllib
 import imp
 from types import ModuleType
-from future.utils import raise_from
+from traceback import format_exception_only
 
 from flask import current_app as app, request, redirect, url_for, session, render_template, abort
 from flask_caching import Cache
@@ -612,6 +612,12 @@ def choose_instance(chalid):
     else:
         raise KeyError("No instances found for challenge id %i" % chalid)
 
+def raise_preserve_tb(etype, msg):
+    root_etype, root_e, tb = sys.exc_info()
+    formatted_root_e = format_exception_only(root_etype, root_e)[-1]
+    formatted_msg = "{} due to {}".format(msg, formatted_root_e)
+    raise etype, formatted_msg, tb
+
 
 def get_instance_static(chal_id):
 
@@ -620,7 +626,8 @@ def get_instance_static(chal_id):
     try:
         params = json.loads(instance.params)
     except ValueError as e:
-        raise_from(RuntimeError("JSON decode eror on string: " + instance.params), e)
+        msg = "JSON decode eror on string '{}'".format(instance.params)
+        raise_preserve_tb(RuntimeError, msg)
 
     filemap_query = FileMappings.query.filter_by(instance=instance.id)
     fileids = [mapping.file for mapping in filemap_query.all()]
@@ -641,8 +648,9 @@ def get_generator(generator_path):
         gen_name = "generator_{:08x}".format(hash)
 
         return imp.load_source(gen_name, gen_script)
-    except Exception as e:
-        raise_from(RuntimeError("unable to load generator module " + generator_path), e)
+    except Exception:
+        msg = "unable to load generator module {}".format(generator_path)
+        raise_preserve_tb(RuntimeError, msg, tb)
 
 
 def get_instance_dynamic(generator):
@@ -662,8 +670,9 @@ def get_instance_dynamic(generator):
 
         return params, files
 
-    except Exception as e:
-        raise_from(RuntimeError("gen_config failed for generator " + generator.__name__), e)
+    except Exception:
+        msg = "gen_config failed for generator {}".format(generator.__name__)
+        raise_preserve_tb(RuntimeError, msg)
 
 
 def get_file_dynamic(generator, path):
@@ -679,8 +688,9 @@ def get_file_dynamic(generator, path):
 
     try:
         generated_file = generator.gen_file(team.seed, path_rel)
-    except Exception as e:
-        raise_from(RuntimeError("gen_file failed for generator " + generator.__name__), e)
+    except Exception:
+        msg = "gen_file failed for generator {}".format(generator.__name__)
+        raise_preserve_tb(RuntimeError, msg)
 
     return generated_file
 

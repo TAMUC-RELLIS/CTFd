@@ -236,22 +236,21 @@ def file_handler(path):
 
         if f.generated:
             chal = Challenges.query.filter_by(id=f.chal).first_or_404()
-            generator = get_generator(chal.generator)
-            generated_file = get_file_dynamic(generator, path)
-
             try:
+                generator = get_generator(chal.generator)
+                generated_file = get_file_dynamic(generator, path)
+
                 if isinstance(generated_file, (file, io.IOBase, str)):
                     return send_file(generated_file,
                                      attachment_filename=os.path.basename(path),
                                      as_attachment=True)
                 else:
-                    raise TypeError("Non-file or filename output of {}"
-                                    .format(path, generator.__name__))
-            except:
+                    raise TypeError("Non-file or filename output of {}. Actual type '{}'"
+                                    .format(generator.__name__, generated_file.__class__.__name__))
+            except Exception as e:
                 logger = logging.getLogger('instancing')
-                logger.exception("file request for '{}' failed")
-                return make_response("Generator %s unavailable."
-                                     % generator.__name__, 501)
+                logger.exception("file request for '{}' failed".format(path))
+                return make_response("File {} unavailable.".format(path), 501)
 
         else:
             upload_folder = os.path.join(app.root_path, app.config['UPLOAD_FOLDER'])

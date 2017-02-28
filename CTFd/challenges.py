@@ -84,7 +84,7 @@ def chals():
                         params, files = get_instance_static(chal.id)
 
                     assert params and files
-                except Exception:
+                except:
                     instance_log.exception("instancing error while generating "
                                            "chal list in challenge #{0.id} "
                                            "({0.name})".format(chal))
