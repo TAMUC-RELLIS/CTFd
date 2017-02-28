@@ -2,6 +2,7 @@ import logging
 import re
 import time
 import json
+import collections
 
 from flask import render_template, request, redirect, jsonify, url_for, session, Blueprint
 
@@ -83,7 +84,8 @@ def chals():
                     else:
                         params, files = get_instance_static(chal.id)
 
-                    assert params and files
+                    assert isinstance(params, collections.Mapping)
+                    assert isinstance(files, collections.Iterable)
                 except:
                     instance_log.exception("instancing error while generating "
                                            "chal list in challenge #{0.id} "
@@ -250,7 +252,8 @@ def chal(chalid):
                         params, files = get_instance_dynamic(generator)
                     else:
                         params, files = get_instance_static(chal.id)
-                    assert params and files
+                    assert isinstance(params, collections.Mapping)
+                    assert isinstance(files, collections.Iterable)
                 except Exception:
                     instance_log.exception("instancing error during key "
                                            "submission in challenge #{0.id} "

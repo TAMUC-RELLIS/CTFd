@@ -3,6 +3,8 @@ import re
 import io
 import logging
 
+from StringIO import StringIO
+
 from flask import current_app as app, render_template, request, redirect, \
     abort, jsonify, url_for, session, Blueprint, Response, \
     send_file, make_response
@@ -240,7 +242,7 @@ def file_handler(path):
                 generator = get_generator(chal.generator)
                 generated_file = get_file_dynamic(generator, path)
 
-                if isinstance(generated_file, (file, io.IOBase, str)):
+                if isinstance(generated_file, (file, StringIO, io.IOBase, str)):
                     return send_file(generated_file,
                                      attachment_filename=os.path.basename(path),
                                      as_attachment=True)
