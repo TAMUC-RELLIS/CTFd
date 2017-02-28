@@ -13,3 +13,4 @@ itsdangerous
 requests
 PyMySQL
 gunicorn
+future

@@ -1,14 +1,22 @@
 import os
 import re
-import imp
+import io
+import logging
 
-from flask import current_app as app, render_template, request, redirect, abort, jsonify, url_for, session, Blueprint, Response, send_file
+from StringIO import StringIO
+
+from flask import current_app as app, render_template, request, redirect, \
+    abort, jsonify, url_for, session, Blueprint, Response, \
+    send_file, make_response
+
 from jinja2.exceptions import TemplateNotFound
 from passlib.hash import bcrypt_sha256
 
-from CTFd.utils import authed, is_setup, validate_url, get_config, set_config, sha512, cache, ctftime, view_after_ctf, ctf_started, is_admin, get_generator, get_file_dynamic
+from CTFd.utils import authed, is_setup, validate_url, get_config, set_config, \
+    sha512, cache, ctftime, view_after_ctf, ctf_started, \
+    is_admin, get_generator, get_file_dynamic
+
 from CTFd.models import db, Teams, Solves, Awards, Files, Pages, Challenges
-from binascii import crc32
 
 views = Blueprint('views', __name__)
 
@@ -224,24 +232,29 @@ def profile():
 def file_handler(path):
     f = Files.query.filter_by(location=path).first_or_404()
     if f.chal:
-        if not is_admin():
-            if not ctftime():
-                if view_after_ctf() and ctf_started():
-                    pass
+        if not (is_admin() or ctftime()):
+            if not (view_after_ctf() and ctf_started()):
+                abort(403)
+
+        if f.generated:
+            chal = Challenges.query.filter_by(id=f.chal).first_or_404()
+            try:
+                generator = get_generator(chal.generator)
+                generated_file = get_file_dynamic(generator, path)
+
+                if isinstance(generated_file, (file, StringIO, io.IOBase, str)):
+                    return send_file(generated_file,
+                                     attachment_filename=os.path.basename(path),
+                                     as_attachment=True)
                 else:
-                    abort(403)
+                    raise TypeError("Non-file or filename output of {}. Actual type '{}'"
+                                    .format(generator.__name__, generated_file.__class__.__name__))
+            except Exception as e:
+                logger = logging.getLogger('instancing')
+                logger.exception("file request for '{}' failed".format(path))
+                return make_response("File {} unavailable.".format(path), 501)
 
-    if f.generated:
-        chal = Challenges.query.filter_by(id=f.chal).first_or_404()
-        generator = get_generator(chal.generator)
-        file_stream = get_file_dynamic(generator, path)
-
-        if file_stream:
-            return send_file(file_stream, attachment_filename=os.path.basename(path))
         else:
-            print("WARNING: file request for '{}' returned 404 due to None output of {}".format(path, generator.__name__))
-            abort(404)
-
-    else:
-        upload_folder = os.path.join(app.root_path, app.config['UPLOAD_FOLDER'])
-        return send_file(os.path.join(upload_folder, f.location))
+            upload_folder = os.path.join(app.root_path, app.config['UPLOAD_FOLDER'])
+            return send_file(os.path.join(upload_folder, f.location),
+                             as_attachment=True)

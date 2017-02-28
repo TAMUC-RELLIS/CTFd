@@ -17,6 +17,8 @@ import tempfile
 import time
 import urllib
 import imp
+from types import ModuleType
+from traceback import format_exception_only
 
 from flask import current_app as app, request, redirect, url_for, session, render_template, abort
 from flask_caching import Cache
@@ -38,10 +40,12 @@ def init_logs(app):
     logger_keys = logging.getLogger('keys')
     logger_logins = logging.getLogger('logins')
     logger_regs = logging.getLogger('regs')
+    logger_instancing = logging.getLogger('instancing')
 
     logger_keys.setLevel(logging.INFO)
     logger_logins.setLevel(logging.INFO)
     logger_regs.setLevel(logging.INFO)
+    logger_instancing.setLevel(logging.INFO)
 
     try:
         parent = os.path.dirname(__file__)
@@ -55,7 +59,8 @@ def init_logs(app):
     logs = [
         os.path.join(parent, 'logs', 'keys.log'),
         os.path.join(parent, 'logs', 'logins.log'),
-        os.path.join(parent, 'logs', 'registers.log')
+        os.path.join(parent, 'logs', 'registers.log'),
+        os.path.join(parent, 'logs', 'instancing.log')
     ]
 
     for log in logs:
@@ -65,14 +70,17 @@ def init_logs(app):
     key_log = logging.handlers.RotatingFileHandler(os.path.join(parent, 'logs', 'keys.log'), maxBytes=10000)
     login_log = logging.handlers.RotatingFileHandler(os.path.join(parent, 'logs', 'logins.log'), maxBytes=10000)
     register_log = logging.handlers.RotatingFileHandler(os.path.join(parent, 'logs', 'registers.log'), maxBytes=10000)
+    instancing_log = logging.handlers.RotatingFileHandler(os.path.join(parent, 'logs', 'instancing.log'), maxBytes=10000)
 
     logger_keys.addHandler(key_log)
     logger_logins.addHandler(login_log)
     logger_regs.addHandler(register_log)
+    logger_instancing.addHandler(instancing_log)
 
     logger_keys.propagate = 0
     logger_logins.propagate = 0
     logger_regs.propagate = 0
+    logger_instancing.propagate = 0
 
 
 def init_errors(app):
@@ -284,7 +292,7 @@ def get_ip():
     combined = "(" + ")|(".join(trusted_proxies) + ")"
     route = request.access_route + [request.remote_addr]
     for addr in reversed(route):
-        if not re.match(combined, addr): # IP is not trusted but we trust the proxies
+        if not re.match(combined, addr):  # IP is not trusted but we trust the proxies
             remote_addr = addr
             break
     else:
@@ -292,7 +300,7 @@ def get_ip():
     return remote_addr
 
 
-def get_kpm(teamid): # keys per minute
+def get_kpm(teamid):  # keys per minute
     one_min_ago = datetime.datetime.utcnow() + datetime.timedelta(minutes=-1)
     return len(db.session.query(WrongKeys).filter(WrongKeys.teamid == teamid, WrongKeys.date >= one_min_ago).all())
 
@@ -580,7 +588,7 @@ def container_ports(name, verbose=False):
             ports = info[0]['Config']['ExposedPorts'].keys()
             if not ports:
                 return []
-            ports = [int(re.sub('[A-Za-z/]+', '', port)) for port in ports_asked]
+            ports = [int(re.sub('[A-Za-z/]+', '', port)) for port in ports]
             return ports
     except subprocess.CalledProcessError:
         return []
@@ -597,35 +605,35 @@ def hash_choice(items, keys):
 def choose_instance(chalid):
     instances = Instances.query.filter_by(chal=chalid) \
                          .order_by(Instances.id.asc()).all()
-    team = Teams.query.filter_by(id=session.get('id')).first()
 
-    instance = None
     if instances:
-        hash_keys = [team.seed]
-        instance = hash_choice(instances, hash_keys)
+        team = Teams.query.filter_by(id=session.get('id')).first()
+        return hash_choice(instances, [team.seed])
     else:
-        print("ERROR: No instances found for challenge id {}".format(chalid))
-    return instance
+        raise KeyError("No instances found for challenge id %i" % chalid)
+
+def raise_preserve_tb(etype, msg):
+    root_etype, root_e, tb = sys.exc_info()
+    formatted_root_e = format_exception_only(root_etype, root_e)[-1]
+    formatted_msg = "{} due to {}".format(msg, formatted_root_e)
+    raise etype, formatted_msg, tb
 
 
 def get_instance_static(chal_id):
+
     instance = choose_instance(chal_id)
 
-    params = None
-    files = None
+    try:
+        params = json.loads(instance.params)
+    except ValueError as e:
+        msg = "JSON decode eror on string '{}'".format(instance.params)
+        raise_preserve_tb(RuntimeError, msg)
 
-    if instance:
-        try:
-            params = json.loads(instance.params)
-        except ValueError:
-            print("ERROR: JSON decode eror on string: {}".format(instance.params))
+    filemap_query = FileMappings.query.filter_by(instance=instance.id)
+    fileids = [mapping.file for mapping in filemap_query.all()]
 
-        filemap_query = FileMappings.query.filter_by(instance=instance.id)
-        fileids = [mapping.file for mapping in filemap_query.all()]
-
-        file_query = Files.query.filter(Files.id.in_(fileids))
-        files = [str(f.location) for f in file_query.all()]
-
+    file_query = Files.query.filter(Files.id.in_(fileids))
+    files = [str(f.location) for f in file_query.all()]
 
     return params, files
 
@@ -634,71 +642,58 @@ def get_generator(generator_path):
     gen_folder = os.path.join(os.path.normpath(app.root_path), app.config['GENERATOR_FOLDER'])
     gen_script = os.path.join(gen_folder, generator_path)
 
-    gen_module = None
-    if os.path.isfile(gen_script):
-        hash = 0
+    try:
         with open(gen_script, 'r') as f:
             hash = crc32(f.read()) & 0xffffffff
         gen_name = "generator_{:08x}".format(hash)
-        print("Importing ({}, {})".format(gen_name, gen_script))
 
-        gen_script_dir, gen_script_name = os.path.split(gen_script)
+        return imp.load_source(gen_name, gen_script)
+    except Exception:
+        msg = "unable to load generator module {}".format(generator_path)
+        raise_preserve_tb(RuntimeError, msg, tb)
 
-        try:
-            gen_module = imp.load_source(gen_name, gen_script)
-        except Exception as e:
-            print("Importing generator module from {} failed with exception {}".format(gen_script, e))
-        except:
-            print("Non-exception object raised while importing from {}".format(gen_script))
-    else:
-        print("ERROR: Generator script '{}' not found".format(gen_script))
-
-    return gen_module
 
 def get_instance_dynamic(generator):
-    params = None
-    files = None
+    if not isinstance(generator, ModuleType):
+        raise TypeError('passed generator object is not a module')
 
-    if generator:
-        gen_folder = os.path.join(os.path.normpath(app.root_path), app.config['GENERATOR_FOLDER'])
-        team = Teams.query.filter_by(id=session.get('id')).first()
-        gen_script_dir, gen_script_name = os.path.split(generator.__file__)
+    gen_folder = os.path.join(os.path.normpath(app.root_path), app.config['GENERATOR_FOLDER'])
+    team = Teams.query.filter_by(id=session.get('id')).first()
+    gen_script_dir, _ = os.path.split(generator.__file__)
 
-        if hasattr(generator, 'gen_config'):
-            try:
-                params, files = generator.gen_config(team.seed)
-            except Exception as e:
-                print("Execution of generator module {} failed with exception {}".format(generator.__name__, e))
-            except:
-                print("Non-exception object raised while executing module {}".format(generator.__name__))
-            if files:
-                file_path_prefix = os.path.relpath(gen_script_dir, start=gen_folder)
-                files = [os.path.normpath(os.path.join(file_path_prefix, file)) for file in files]
-        else:
-            print("Generator module from {} missing gen_config function".format(generator.__name__))
+    try:
+        params, files = generator.gen_config(team.seed)
 
-    return params, files
+        if files:
+            file_path_prefix = os.path.relpath(gen_script_dir, start=gen_folder)
+            files = [os.path.normpath(os.path.join(file_path_prefix, file)) for file in files]
+
+        return params, files
+
+    except Exception:
+        msg = "gen_config failed for generator {}".format(generator.__name__)
+        raise_preserve_tb(RuntimeError, msg)
+
 
 def get_file_dynamic(generator, path):
-    file_stream = None
+    if not isinstance(generator, ModuleType):
+        raise TypeError('passed generator object is not a module')
 
-    if generator:
-        gen_folder = os.path.join(os.path.normpath(app.root_path), app.config['GENERATOR_FOLDER'])
-        team = Teams.query.filter_by(id=session.get('id')).first()
-        gen_script_dir, gen_script_name = os.path.split(generator.__file__)
+    root = os.path.normpath(app.root_path)
+    gen_folder = os.path.join(root, app.config['GENERATOR_FOLDER'])
+    team = Teams.query.filter_by(id=session.get('id')).first()
+    gen_script_dir, gen_script_name = os.path.split(generator.__file__)
 
-        if hasattr(generator, 'gen_file'):
-            path_rel = os.path.relpath(os.path.join(gen_folder, path), start=gen_script_dir)
-            try:
-                file_stream = generator.gen_file(team.seed, path_rel)
-            except Exception as e:
-                print("Execution of generator module {} failed with exception {}".format(generator.__name__, e))
-            except:
-                print("Non-exception object raised while executing module {}".format(generator.__name__))
-        else:
-            print("Generator module from {} missing gen_file function".format(generator.__name__))
+    path_rel = os.path.relpath(os.path.join(gen_folder, path), start=gen_script_dir)
 
-    return file_stream
+    try:
+        generated_file = generator.gen_file(team.seed, path_rel)
+    except Exception:
+        msg = "gen_file failed for generator {}".format(generator.__name__)
+        raise_preserve_tb(RuntimeError, msg)
+
+    return generated_file
+
 
 def update_generated_files(chalid, files):
     files_db_objs = Files.query.add_columns('location').filter_by(chal=chalid).all()
