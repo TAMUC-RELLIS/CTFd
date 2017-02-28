@@ -9,7 +9,7 @@ from sqlalchemy.sql import not_
 from CTFd.utils import admins_only, is_admin, unix_time, get_config, \
     set_config, sendmail, rmdir, create_image, delete_image, run_image, container_status, container_ports, \
     container_stop, container_start, get_themes, cache, upload_file
-from CTFd.models import db, Teams, Solves, Awards, Containers, Challenges, WrongKeys, Keys, Tags, DiscoveryList, Files, Tracking, Pages, Config, DatabaseError
+from CTFd.models import db, Teams, Solves, Awards, Containers, Challenges, WrongKeys, Keys, Tags, DiscoveryList, Hint, Files, Tracking, Pages, Config, DatabaseError
 from CTFd.scoreboard import get_standings
 
 admin = Blueprint('admin', __name__)
@@ -279,7 +279,7 @@ def new_container():
 @admins_only
 def admin_chals():
     if request.method == 'POST':
-        chals = Challenges.query.add_columns('id', 'name', 'value', 'description', 'category', 'hidden').order_by(Challenges.value).all()
+        chals = Challenges.query.add_columns('id', 'name', 'value', 'description', 'category', 'hint', 'hidden').order_by(Challenges.value).all()
 
         teams_with_points = db.session.query(Solves.teamid).join(Teams).filter(
             Teams.banned == False).group_by(Solves.teamid).count()
@@ -299,6 +299,7 @@ def admin_chals():
                 'value': x.value,
                 'description': x.description,
                 'category': x.category,
+                'hint':x.hint,
                 'hidden': x.hidden,
                 'percentage_solved': percentage
             })
@@ -392,6 +393,36 @@ def admin_delete_discoveryList(discoveryid):
     if request.method == 'POST':
         discovery = DiscoveryList.query.filter_by(id=discoveryid).first_or_404()
         db.session.delete(discovery)
+        db.session.commit()
+        db.session.close()
+        return '1'
+        
+@admin.route('/admin/hint/<int:chalid>', methods=['GET', 'POST'])
+@admins_only
+def admin_hintList(chalid):
+    if request.method == 'GET':
+        hint = Hint.query.filter_by(chal=chalid).all()
+        json_data = {'hint': []}
+        for x in hint:
+            json_data['hint'].append({'id': x.id, 'chal': x.chal, 'hint': x.hint})
+        return jsonify(json_data)
+
+    elif request.method == 'POST':
+        newhint = request.form.getlist('hint[]')
+        for x in newhint:
+            hint = Hint(chalid, x)
+            db.session.add(hint)
+        db.session.commit()
+        db.session.close()
+        return '1'
+        
+
+@admin.route('/admin/hint/<int:hintid>/delete', methods=['POST'])
+@admins_only
+def admin_delete_hintList(hintid):
+    if request.method == 'POST':
+        hint = Hint.query.filter_by(id=hintid).first_or_404()
+        db.session.delete(hint)
         db.session.commit()
         db.session.close()
         return '1'
@@ -821,7 +852,7 @@ def admin_create_chal():
     flags = [{'flag': request.form['key'], 'type':int(request.form['key_type[0]'])}]
 
     # Create challenge
-    chal = Challenges(request.form['name'], request.form['desc'], request.form['value'], request.form['category'], flags)
+    chal = Challenges(request.form['name'], request.form['desc'], request.form['value'], request.form['category'], request.form['hint'], flags)
     if 'hidden' in request.form:
         chal.hidden = True
     else:
@@ -851,6 +882,7 @@ def admin_delete_chal():
         rmdir(folder)
     Tags.query.filter_by(chal=challenge.id).delete()
     DiscoveryList.query.filter_by(chal=challenge.id).delete()
+    Hint.query.filter_by(chal=challenge.id).delete()
     Challenges.query.filter_by(id=challenge.id).delete()
     db.session.commit()
     db.session.close()
@@ -863,6 +895,7 @@ def admin_update_chal():
     challenge = Challenges.query.filter_by(id=request.form['id']).first_or_404()
     challenge.name = request.form['name']
     challenge.description = request.form['desc']
+    challenge.hint = request.form['hint']
     challenge.value = request.form['value']
     challenge.category = request.form['category']
     challenge.hidden = 'hidden' in request.form

@@ -51,6 +51,7 @@ function loadchal(id, update) {
     $('.chal-category').val(obj.category);
     $('.chal-id').val(obj.id);
     // $('.chal-discoveryList').val(obj.discovery); //HERE
+    $('.chal-hint').val(obj.hint);
     $('.chal-hidden').prop('checked', false);
     if (obj.hidden) {
         $('.chal-hidden').prop('checked', true);
@@ -178,8 +179,30 @@ function loaddiscoveryList(chal){
     });
 }
 
+function loadhint(chal){
+    $('#hint-chal').val(chal)
+    $('#current-hint').empty()
+    $('#chal-hint').empty()
+    $.get(script_root + '/admin/hint/'+chal, function(data){
+        hint = $.parseJSON(JSON.stringify(data))
+        hint = hint['hint']
+        for (var i = 0; i < hint.length; i++) {
+            hint = "<span class='label label-primary chal-hint'><span>"+hint[i].hint+"</span><a name='"+hint[i].id+"'' class='delete-hint'>&#215;</a></span>"
+            $('#current-hint').append(hint)
+        };
+        $('.delete-hint').click(function(e){
+            deletehint(e.target.name)
+            $(e.target).parent().remove()
+        });
+    });
+}
+
 function deletetag(tagid){
     $.post(script_root + '/admin/tags/'+tagid+'/delete', {'nonce': $('#nonce').val()});
+}
+
+function deletehint(hintid){
+    $.post(script_root + '/admin/hint/'+hintid+'/delete', {'nonce': $('#nonce').val()});
 }
 
 function deletediscovery(discoveryid){
@@ -200,6 +223,7 @@ function updatetags(){
     loadchal(chal)
 }
 
+
 function updatefiles(){
     chal = $('#files-chal').val();
     var form = $('#update-files form')[0];
@@ -217,6 +241,17 @@ function updatefiles(){
             $('#update-files').modal('hide');
         }
     });
+
+function updatehint(){
+    hint = [];
+    chal = $('#hint-chal').val()
+    $('#chal-hint > span > span').each(function(i, e){
+        hint.push($(e).text())
+    });
+    $.post(script_root + '/admin/hint/'+chal, {'hint':hint, 'nonce': $('#nonce').val()})
+    loadchal(chal)
+}
+
 
 function updatediscoveryList(){
     discoveryList = [];
@@ -264,7 +299,6 @@ function loadchals(){
         categories = [];
         challenges = $.parseJSON(JSON.stringify(data));
 
-
         for (var i = challenges['game'].length - 1; i >= 0; i--) {
             if ($.inArray(challenges['game'][i].category, categories) == -1) {
                 categories.push(challenges['game'][i].category)
@@ -284,6 +318,7 @@ function loadchals(){
             loadtags(this.value);
             loadfiles(this.value);
             loaddiscoveryList(this.value);
+            loadhint(this.value);
         });
 
         // $('.create-challenge').click(function (e) {
@@ -309,10 +344,14 @@ $('#submit-tags').click(function (e) {
     updatetags()
 });
 
-
 $('#submit-files').click(function (e) {
     e.preventDefault();
     updatefiles()
+
+$('#submit-hint').click(function (e) {
+    e.preventDefault();
+    updatehint()
+});
 
 $('#submit-discoveryList').click(function (e) {
     e.preventDefault();
@@ -346,6 +385,18 @@ $(".tag-insert").keyup(function (e) {
     }
 });
 
+$(".hint-insert").keyup(function (e) {
+    if (e.keyCode == 13) {
+        hint = $('.hint-insert').val()
+        hint = hint.replace(/'/g, '');
+        if (hint.length > 0){
+            hint = "<span class='label label-primary chal-hint'><span>"+hint+"</span><a class='delete-hint' onclick='$(this).parent().remove()'>&#215;</a></span>"
+            $('#chal-hint').append(hint)
+        }
+        $('.hint-insert').val("")
+    }
+});
+
 $(".discovery-insert").keyup(function (e) {
     if (e.keyCode == 13) {
         discovery = $('.discovery-insert').val()
@@ -374,6 +425,111 @@ $('#new-desc-edit').on('shown.bs.tab', function (event) {
 // $('.create-challenge').click(function (e) {
 //     $('#create-challenge').modal();
 // });
+
+$('#create-discovery').click(function(e){
+    elem = builddiscovery();
+    $('#current-discoveryList').append(elem);
+    setSubmitDiscBtnStatus()
+});
+
+function setSubmitDiscBtnStatus(){
+    var isValid = true;
+    var failureIndices = [];
+    $(".params-input-group").each(function(i){
+        if($(this).hasClass("has-error")){
+            isValid = false;
+            failureIndices.push(i);
+        }
+    });
+    if(isValid){
+        $("#submit-discoveryList").removeClass("disabled");
+        $("#submit-discoveryList").css("pointer-events", "auto");
+        $("#discovery-error-notification").slideUp();
+    }
+    else{
+        $("#submit-discoveryList").addClass("disabled");
+        $("#submit-discoveryList").css("pointer-events", "none");
+        $("#discovery-error-notification").slideDown();
+    }
+    return isValid;
+}
+
+function builddiscovery(){
+  
+    var discoveryList = []
+    x = $(".chal-button")
+    
+    console.log("List of Challenges");
+    console.log(x);
+    
+    $(".chal-button").each(function(){
+      // if(discoveryList.indexOf(this) == -1){
+          // $(discoveryList).append(this.value);
+          // $(this).addClass('current-chal');
+          
+      // } else{
+      console.log("Well...");
+      $(".chal-button h5").each(function(){
+        console.log("d...");
+        console.log(this.firstChild);
+      });
+      // }
+    });
+    
+     
+    var elem = $('<div class="col-md-12 row current-discovery">');
+        
+    var buttons = $('<div class="btn-group col-md-5" role="group">');
+    var dropdown = $('<div class="btn-group dropdown" role="group">');
+    dropdown.append('<button class="btn btn-default dropdown-toggle" type="button" id="discovery_dropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true"><span class="chal-quantity">0</span> Challenges<span class="chal-plural">s</span> <span class="caret"></span></button>');
+    var options = $('<ul class="dropdown-menu" aria-labelledby="discovery_dropdown">');
+    dropdown.append(options);
+    buttons.append(dropdown);
+    
+    $('.chal-button').each(function(){
+        add_discovery = $('<li class="discovery-item"><a href="#"><span class="fa fa-square-o" aria-hidden="true"></span><span class="fa fa-check-square-o" aria-hidden="true"></span> '+$(this).val()+': '+this.firstChild.innerText+'</a></li>');
+        add_discovery.click(function(e){
+            if($(this).hasClass('active')){
+                $(this).removeClass('active');
+                $(this).find('.fa-check-square-o').hide();
+                $(this).find('.fa-square-o').show();
+            }
+            else{
+                $(this).addClass('active');
+                $(this).find('.fa-check-square-o').show();
+                $(this).find('.fa-square-o').hide();
+            }
+            var numActive = $(this).parent().find(".active").length;
+            $(this).parent().parent().find(".chal-quantity").text(numActive.toString());
+            if(numActive == 1){
+                $(this).parent().parent().find(".chal-plural").html("&nbsp;");
+            }
+            else {
+                $(this).parent().parent().find(".chal-plural").html("s");
+            }
+            e.stopPropagation();
+        })
+        add_discovery.find('.fa-check-square-o').hide();
+
+        var chalid = parseInt($(this).find('.chal-button').value);
+        add_discovery.append($("<input class='chal-link' type='hidden'>").val(chalid));
+        options.append(add_discovery);
+
+        if($.inArray(chalid, discoveryList) > -1){
+            add_discovery.click();
+        }
+    });
+
+
+    if(options.children().length == 0){
+      options.append('<li>&nbsp; No files uploaded</li>');
+    }
+
+    buttons.append('<a href="#" onclick="$(this).parent().parent().remove(); setSubmitDiscBtnStatus()" style="margin-right:-10px;" class="btn btn-danger pull-right discovery-remove-button">Remove</a>');
+    elem.append(buttons);
+    return elem;
+    
+}
 
 
 $('#create-key').click(function(e){
