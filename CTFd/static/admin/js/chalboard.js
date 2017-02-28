@@ -457,26 +457,12 @@ function setSubmitDiscBtnStatus(){
 function builddiscovery(){
   
     var discoveryList = []
-    x = $(".chal-button")
     
-    console.log("List of Challenges");
-    console.log(x);
-    
-    $(".chal-button").each(function(){
-      // if(discoveryList.indexOf(this) == -1){
-          // $(discoveryList).append(this.value);
-          // $(this).addClass('current-chal');
-          
-      // } else{
-      console.log("Well...");
-      $(".chal-button h5").each(function(){
-        console.log("d...");
-        console.log(this.firstChild);
-      });
-      // }
+    $('.chal-title').each(function(){
+        curChalNum = this.innerText
     });
     
-     
+    
     var elem = $('<div class="col-md-12 row current-discovery">');
         
     var buttons = $('<div class="btn-group col-md-5" role="group">');
@@ -487,36 +473,38 @@ function builddiscovery(){
     buttons.append(dropdown);
     
     $('.chal-button').each(function(){
-        add_discovery = $('<li class="discovery-item"><a href="#"><span class="fa fa-square-o" aria-hidden="true"></span><span class="fa fa-check-square-o" aria-hidden="true"></span> '+$(this).val()+': '+this.firstChild.innerText+'</a></li>');
-        add_discovery.click(function(e){
-            if($(this).hasClass('active')){
-                $(this).removeClass('active');
-                $(this).find('.fa-check-square-o').hide();
-                $(this).find('.fa-square-o').show();
-            }
-            else{
-                $(this).addClass('active');
-                $(this).find('.fa-check-square-o').show();
-                $(this).find('.fa-square-o').hide();
-            }
-            var numActive = $(this).parent().find(".active").length;
-            $(this).parent().parent().find(".chal-quantity").text(numActive.toString());
-            if(numActive == 1){
-                $(this).parent().parent().find(".chal-plural").html("&nbsp;");
-            }
-            else {
-                $(this).parent().parent().find(".chal-plural").html("s");
-            }
-            e.stopPropagation();
-        })
-        add_discovery.find('.fa-check-square-o').hide();
+        if(this.firstChild.innerText != curChalNum){
+            add_discovery = $('<li class="discovery-item"><a href="#"><span class="fa fa-square-o" aria-hidden="true"></span><span class="fa fa-check-square-o" aria-hidden="true"></span> '+'ID: '+$(this).val()+'| name: '+this.firstChild.innerText+'</a></li>');
+            add_discovery.click(function(e){
+                if($(this).hasClass('active')){
+                    $(this).removeClass('active');
+                    $(this).find('.fa-check-square-o').hide();
+                    $(this).find('.fa-square-o').show();
+                }
+                else{
+                    $(this).addClass('active');
+                    $(this).find('.fa-check-square-o').show();
+                    $(this).find('.fa-square-o').hide();
+                }
+                var numActive = $(this).parent().find(".active").length;
+                $(this).parent().parent().find(".chal-quantity").text(numActive.toString());
+                if(numActive == 1){
+                    $(this).parent().parent().find(".chal-plural").html("&nbsp;");
+                }
+                else {
+                    $(this).parent().parent().find(".chal-plural").html("s");
+                }
+                e.stopPropagation();
+            })
+            add_discovery.find('.fa-check-square-o').hide();
 
-        var chalid = parseInt($(this).find('.chal-button').value);
-        add_discovery.append($("<input class='chal-link' type='hidden'>").val(chalid));
-        options.append(add_discovery);
+            var chalid = parseInt($(this).find('.chal-button').value);
+            add_discovery.append($("<input class='chal-link' type='hidden'>").val(chalid));
+            options.append(add_discovery);
 
-        if($.inArray(chalid, discoveryList) > -1){
-            add_discovery.click();
+            if($.inArray(chalid, discoveryList) > -1){
+                add_discovery.click();
+            }
         }
     });
 
