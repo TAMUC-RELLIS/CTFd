@@ -59,15 +59,18 @@ class Challenges(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80))
     description = db.Column(db.Text)
+    hint = db.Column(db.Text)
     value = db.Column(db.Integer)
     category = db.Column(db.String(80))
     flags = db.Column(db.Text)
     hidden = db.Column(db.Boolean)
     # discovery = db.Column(db.String(80))
+    # hint = db.Column(db.Text)
 
-    def __init__(self, name, description, value, category, flags):
+    def __init__(self, name, description, value, category, hint, flags):
         self.name = name
         self.description = description
+        self.hint = hint
         self.value = value
         self.category = category
         self.flags = json.dumps(flags)
@@ -116,6 +119,19 @@ class DiscoveryList(db.Model):
     def __init__(self, chal, discovery):
         self.chal = chal
         self.discovery = discovery
+
+    def __repr__(self):
+        return "{0}".format(self.chal)
+        
+        
+class Hint(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    chal = db.Column(db.Integer, db.ForeignKey('challenges.id'))
+    hint = db.Column(db.Text)
+
+    def __init__(self, chal, hint):
+        self.chal = chal
+        self.hint = hint
 
     def __repr__(self):
         return "{0}".format(self.chal)

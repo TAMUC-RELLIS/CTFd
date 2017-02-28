@@ -21,6 +21,7 @@ function updateChalWindow(obj) {
     var chal = $('#chal-window');
     chal.find('.chal-name').text(obj.name);
     chal.find('.chal-desc').html(marked(obj.description, {'gfm':true, 'breaks':true}));
+    // chal.find('.chal-hint').html(marked(obj.hint, {'gfm':true, 'breaks':true}));
     chal.find('.chal-files').empty();
     for (var i = 0; i < obj.files.length; i++) {
         var filename = obj.files[i].split('/');
@@ -37,6 +38,7 @@ function updateChalWindow(obj) {
     }
 
     chal.find('.chal-value').text(obj.value);
+    chal.find('.chal-hint').text(obj.hint);
     chal.find('.chal-category').text(obj.category);
     chal.find('#chal-id').val(obj.id);
     var solves = obj.solves == 1 ? " Solve" : " Solves";
