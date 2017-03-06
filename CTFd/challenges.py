@@ -94,7 +94,7 @@ def discovery(chals):
       print "Hint: " + str(x.hint)
       for y in DiscoveryList.query.add_columns('id', 'discovery', 'chal').all(): # For each OR set
         if (str(y.chal) == str(x.id) and show != 1):
-          and_list = discovery_and_query(y.discovery)
+          and_list = (y.discovery).split('&')
           for need_solved in and_list: # For each AND elem
             show = 2
             for z in Solves.query.add_columns('chalid').filter_by(teamid=session['id']).all():
@@ -110,20 +110,7 @@ def discovery(chals):
         discovered.append(x)
       else:
         print "HIDDEN" + str(and_list) + " show:" + str(show) +'\n'
-    return discovered
-    
-    
-def discovery_and_query(totalQuery):
-    and_list = []
-    for a in totalQuery.split('&'):
-      temp_query = Challenges.query.add_columns('id').filter_by(name=str(a)).all()
-      if temp_query: # If problem exists
-        and_list.append(temp_query[0].id) # Add challenge ID
-      else:
-        and_list = [] # Else, empty query (It's FALSE; don't process)
-        break
-    return and_list
-    
+    return discovered   
     
 @challenges.route('/chals/solves')
 def solves_per_chal():
