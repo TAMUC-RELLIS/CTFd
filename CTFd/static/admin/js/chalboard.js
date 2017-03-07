@@ -223,7 +223,6 @@ function updatetags(){
     loadchal(chal)
 }
 
-
 function updatefiles(){
     chal = $('#files-chal').val();
     var form = $('#update-files form')[0];
@@ -251,7 +250,6 @@ function updatehint(){
     $.post(script_root + '/admin/hint/'+chal, {'hint':hint, 'nonce': $('#nonce').val()})
     loadchal(chal)
 }
-
 
 function updatediscoveryList(){
     discoveryList = [];
@@ -422,6 +420,11 @@ $('#create-discovery').click(function(e){
     $('#current-discoveryList').append(elem);
 });
 
+$('#create-discovery').click(function(e){
+    elem = builddiscovery();
+    $('#current-discoveryList').append(elem);
+});
+
 var discovery_dropdown=-1
 
 function builddiscovery(){
@@ -475,7 +478,6 @@ function builddiscovery(){
                     if($(String('.disc'+this_disc_drop_id)).length == 0){
                         discovery = "<span class='label label-primary chal-discovery disc"+this_disc_drop_id+"'><span>"+discovery                   
                         $('#chal-discoveryList').append(discovery)
-                        // $('#chal-discoveryList')[this_disc_drop_id] = discovery
                     } else{
                         $(String('.disc'+this_disc_drop_id))[0].innerText=discovery
                     }

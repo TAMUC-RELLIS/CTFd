@@ -67,7 +67,6 @@ class Challenges(db.Model):
     # discovery = db.Column(db.String(80))
     # hint = db.Column(db.Text)
 
-
     def __init__(self, name, description, value, category, type=0, hint, flags):
         self.name = name
         self.description = description
