@@ -492,7 +492,7 @@ table{
 
 .current-discovery{
     margin-left: 1% !important;
-    display: inline-block;
+    display: inline-block !important;
 }
 
 /* .dis { */
