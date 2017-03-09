@@ -638,64 +638,73 @@ def get_instance_static(chal_id):
     return params, files
 
 
-def get_generator(generator_path):
+def get_instance_dynamic(generator_path):
     gen_folder = os.path.join(os.path.normpath(app.root_path), app.config['GENERATOR_FOLDER'])
-    gen_script = os.path.join(gen_folder, generator_path)
+    team = Teams.query.add_columns('seed').filter_by(id=session.get('id')).first()
+    abs_gen_path = os.path.abspath(os.path.join(gen_folder, generator_path))
+    gen_script_dir = os.path.dirname(abs_gen_path)
 
     try:
-        with open(gen_script, 'r') as f:
-            hash = crc32(f.read()) & 0xffffffff
-        gen_name = "generator_{:08x}".format(hash)
+        output = subprocess.check_output([abs_gen_path, 'config', team.seed], 
+                                         cwd=gen_script_dir)
 
-        return imp.load_source(gen_name, gen_script)
-    except Exception:
-        msg = "unable to load generator module {}".format(generator_path)
-        raise_preserve_tb(RuntimeError, msg, tb)
-
-
-def get_instance_dynamic(generator):
-    if not isinstance(generator, ModuleType):
-        raise TypeError('passed generator object is not a module')
-
-    gen_folder = os.path.join(os.path.normpath(app.root_path), app.config['GENERATOR_FOLDER'])
-    team = Teams.query.filter_by(id=session.get('id')).first()
-    gen_script_dir, _ = os.path.split(generator.__file__)
-
-    try:
-        params, files = generator.gen_config(team.seed)
-
-        if files:
-            file_path_prefix = os.path.relpath(gen_script_dir, start=gen_folder)
-            files = [os.path.normpath(os.path.join(file_path_prefix, file)) for file in files]
-
-        return params, files
-
-    except Exception:
-        msg = "gen_config failed for generator {}".format(generator.__name__)
+    except subprocess.CalledProcessError as e:
+        msg = """subprocess call failed for generator at {} failed with exit code {}
+        Last output:
+        {}""".format(genertor_path, e.returncode, e.output)
+        raise_preserve_tb(RuntimeError, msg)
+    except FileNotFoundError:
+        msg = "subprocess call failed for generator at {}: File not found".format(genertor_path)
         raise_preserve_tb(RuntimeError, msg)
 
+    try:
+        config = json.loads(output)
+        params = config.get('params', {})
+        files = config.get('files', [])
 
-def get_file_dynamic(generator, path):
-    if not isinstance(generator, ModuleType):
-        raise TypeError('passed generator object is not a module')
+    except ValueError:
+        msg = "subprocess call failed for generator at {} failed to produce JSON".format()
+        raise_preserve_tb(RuntimeError, msg)
 
-    root = os.path.normpath(app.root_path)
-    gen_folder = os.path.join(root, app.config['GENERATOR_FOLDER'])
-    team = Teams.query.filter_by(id=session.get('id')).first()
-    gen_script_dir, gen_script_name = os.path.split(generator.__file__)
+    if files:
+        file_path_prefix = os.path.relpath(gen_script_dir, start=gen_folder)
+        files = [os.path.normpath(os.path.join(file_path_prefix, file)) for file in files]
 
-    path_rel = os.path.relpath(os.path.join(gen_folder, path), start=gen_script_dir)
+    return params, files
+
+
+
+def get_file_dynamic(generator_path, path):
+    """
+    Call upon the given generator to retrieve the file at the given "path"
+    Returns the file object which for the processes stdout. 
+    The process runs asynchronously after this function has returned
+    Disadvantage to this approach, error in the file generator script cannot be caught here
+    """
+    gen_folder = os.path.join(os.path.normpath(app.root_path), app.config['GENERATOR_FOLDER'])
+    team = Teams.query.add_columns('seed').filter_by(id=session.get('id')).first()
+    abs_gen_path = os.path.abspath(os.path.join(gen_folder, generator_path))
+    gen_script_dir = os.path.dirname(abs_gen_path)
+
+    path_rel = os.path.relpath(abs_gen_path, start=gen_script_dir)
 
     try:
-        generated_file = generator.gen_file(team.seed, path_rel)
-    except Exception:
-        msg = "gen_file failed for generator {}".format(generator.__name__)
+        generated_file = subprocess.Popen([abs_gen_path, 'file', team.seed, path_rel], 
+                                          cwd=gen_script_dir,
+                                          stdout=subprocess.PIPE).stdout
+
+    except FileNotFoundError:
+        msg = "subprocess call failed for generator at {}: File not found".format(genertor_path)
         raise_preserve_tb(RuntimeError, msg)
 
     return generated_file
 
 
 def update_generated_files(chalid, files):
+    """
+    Adds any filenames given by the files list to the DB as generated files.
+    The chalid of these new files will the the inputted chalid
+    """
     files_db_objs = Files.query.add_columns('location').filter_by(chal=chalid).all()
     files_db = [f.location for f in files_db_objs]
     for file in files:

@@ -14,7 +14,7 @@ from passlib.hash import bcrypt_sha256
 
 from CTFd.utils import authed, is_setup, validate_url, get_config, set_config, \
     sha512, cache, ctftime, view_after_ctf, ctf_started, \
-    is_admin, get_generator, get_file_dynamic
+    is_admin, get_file_dynamic
 
 from CTFd.models import db, Teams, Solves, Awards, Files, Pages, Challenges
 
@@ -239,8 +239,7 @@ def file_handler(path):
         if f.generated:
             chal = Challenges.query.filter_by(id=f.chal).first_or_404()
             try:
-                generator = get_generator(chal.generator)
-                generated_file = get_file_dynamic(generator, path)
+                generated_file = get_file_dynamic(chal.generator, path)
 
                 if isinstance(generated_file, (file, StringIO, io.IOBase, str)):
                     return send_file(generated_file,

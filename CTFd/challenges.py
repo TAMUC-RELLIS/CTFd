@@ -8,7 +8,7 @@ from flask import render_template, request, redirect, jsonify, url_for, session,
 
 from CTFd.utils import ctftime, view_after_ctf, authed, unix_time, get_kpm, \
     user_can_view_challenges, is_admin, get_config, get_ip, is_verified, \
-    ctf_started, ctf_ended, ctf_name, get_instance_static, get_generator, \
+    ctf_started, ctf_ended, ctf_name, get_instance_static,\
     get_instance_dynamic, update_generated_files
 
 from CTFd.models import db, Challenges, Files, Solves, WrongKeys, Tags, Teams, Awards
@@ -77,8 +77,7 @@ def chals():
             if chal.instanced:
                 try:
                     if chal.generated:
-                        generator = get_generator(chal.generator)
-                        params, files = get_instance_dynamic(generator)
+                        params, files = get_instance_dynamic(chal.generator)
                         if files:
                             update_generated_files(chal.id, files)
                     else:
@@ -248,8 +247,7 @@ def chal(chalid):
             if chal.instanced:
                 try:
                     if chal.generated:
-                        generator = get_generator(chal.generator)
-                        params, files = get_instance_dynamic(generator)
+                        params, files = get_instance_dynamic(chal.generator)
                     else:
                         params, files = get_instance_static(chal.id)
                     assert isinstance(params, collections.Mapping)
