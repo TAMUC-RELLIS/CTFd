@@ -4,12 +4,13 @@ from distutils.version import StrictVersion
 from flask import Flask
 from jinja2 import FileSystemLoader
 from sqlalchemy.engine.url import make_url
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy_utils import database_exists, create_database
+from six.moves import input
 
-from utils import get_config, set_config, cache, migrate, migrate_upgrade
+from CTFd.utils import get_config, set_config, cache, migrate, migrate_upgrade, migrate_stamp
 
-__version__ = '1.0.0'
+__version__ = '1.0.1'
 
 class ThemeLoader(FileSystemLoader):
     def get_source(self, environment, template):
@@ -58,9 +59,17 @@ def create_app(config='CTFd.config.Config'):
             set_config('ctf_version', __version__)
 
         if version and (StrictVersion(version) < StrictVersion(__version__)): ## Upgrading from an older version of CTFd
-            migrate_upgrade()
-            set_config('ctf_version', __version__)
-            
+            print("/*\\ CTFd has updated and must update the database! /*\\")
+            print("/*\\ Please backup your database before proceeding! /*\\")
+            print("/*\\ CTFd maintainers are not responsible for any data loss! /*\\")
+            if input('Run database migrations (Y/N)').lower().strip() == 'y':
+                migrate_stamp()
+                migrate_upgrade()
+                set_config('ctf_version', __version__)
+            else:
+                print('/*\\ Ignored database migrations... /*\\')
+                exit()
+
         if not get_config('ctf_theme'):
             set_config('ctf_theme', 'original')
 
@@ -68,7 +77,7 @@ def create_app(config='CTFd.config.Config'):
         from CTFd.challenges import challenges
         from CTFd.scoreboard import scoreboard
         from CTFd.auth import auth
-        from CTFd.admin import admin
+        from CTFd.admin import admin, admin_statistics, admin_challenges, admin_pages, admin_scoreboard, admin_containers, admin_keys, admin_teams
         from CTFd.utils import init_utils, init_errors, init_logs
 
         init_utils(app)
@@ -79,7 +88,15 @@ def create_app(config='CTFd.config.Config'):
         app.register_blueprint(challenges)
         app.register_blueprint(scoreboard)
         app.register_blueprint(auth)
+
         app.register_blueprint(admin)
+        app.register_blueprint(admin_statistics)
+        app.register_blueprint(admin_challenges)
+        app.register_blueprint(admin_teams)
+        app.register_blueprint(admin_scoreboard)
+        app.register_blueprint(admin_keys)
+        app.register_blueprint(admin_containers)
+        app.register_blueprint(admin_pages)
 
         from CTFd.plugins import init_plugins
 
