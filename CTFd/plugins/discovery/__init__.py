@@ -50,7 +50,6 @@ def load(app):
     @discoveryList.route('/admin/discoveryList/<int:chalid>', methods=['GET', 'POST'])
     @admins_only
     def admin_discoveryList(chalid):
-        print "admin->Disc"
         if request.method == 'GET':
             discoveryList = DiscoveryList.query.filter_by(chal=chalid).all()
             json_data = {'discoveryList': []}
@@ -107,13 +106,9 @@ def load(app):
                 else:
                     return redirect(url_for('views.static_html'))
         if user_can_view_challenges() and (ctf_started() or is_admin()):
-            # chals = Challenges.query.filter(or_(Challenges.hidden != True, Challenges.hidden == None)).add_columns('id', 'name', 'value', 'description', 'category', 'hint').order_by(Challenges.value).all()
             chals = Challenges.query.filter(or_(Challenges.hidden != True, Challenges.hidden == None)).add_columns('id', 'name', 'value', 'description', 'category').order_by(Challenges.value).all()
             
-            print "\n\n\nTHIS IS GOOD!!!\n\n"
-            
             if len(chals)!=0:
-              print "\n\nDoing Chals\n\n"
               chals = discovery(chals)
                  
             # THIS IS WHERE TO ADD HINT STUFF <<<----
@@ -136,27 +131,26 @@ def load(app):
         discovered = []
         for x in chals:
           show, and_list = 0, []
-          print "Challenge #" + str(x.id) + " - Needed problems solved to be seen:"
-          # print "Hint: " + str(x.hint)
+          print("Challenge #" + str(x.id) + " - Needed problems solved to be seen:")
           for y in DiscoveryList.query.add_columns('id', 'discovery', 'chal').all(): # For each OR set
             if (str(y.chal) == str(x.id) and show != 1):
               and_list = map(int, (y.discovery).split('&'))
-              print "NEEDED: " + str(and_list)
+              print("NEEDED: " + str(and_list))
               for need_solved in and_list: # For each AND elem
                 show = 2
                 for z in Solves.query.add_columns('chalid').filter_by(teamid=session['id']).all():
                   if need_solved == z.chalid:
                     show = 1 # Chal is solved and is needed
-                    print "Challenge ID: " + str(need_solved) + " has been solved & is needed"
+                    print("Challenge ID: " + str(need_solved) + " has been solved & is needed")
                     break
                 if (show == 2): #Challenge is not solved and is needed
                   and_list=[] # Mark wrong
                   break
           if ((len(and_list)==0 and show == 0) or show==1):
-            print "Shown, because of:" + str(and_list) + " show:" + str(show) +'\n'
+            print("Shown, because of:" + str(and_list) + " show:" + str(show) +'\n')
             discovered.append(x)
           else:
-            print "HIDDEN, solved:" + str(and_list) + " show:" + str(show) +'\n'
+            print("HIDDEN, solved:" + str(and_list) + " show:" + str(show) +'\n')
         return discovered 
     
     app.view_functions['challenges.chals'] = chals
