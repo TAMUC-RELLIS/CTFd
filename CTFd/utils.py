@@ -651,10 +651,10 @@ def get_instance_dynamic(generator_path):
     except subprocess.CalledProcessError as e:
         msg = """subprocess call failed for generator at {} failed with exit code {}
         Last output:
-        {}""".format(genertor_path, e.returncode, e.output)
+        {}""".format(generator_path, e.returncode, e.output)
         raise_preserve_tb(RuntimeError, msg)
-    except FileNotFoundError:
-        msg = "subprocess call failed for generator at {}: File not found".format(genertor_path)
+    except IOError:
+        msg = "subprocess call failed for generator at {}: File not found".format(generator_path)
         raise_preserve_tb(RuntimeError, msg)
 
     try:
@@ -663,7 +663,7 @@ def get_instance_dynamic(generator_path):
         files = config.get('files', [])
 
     except ValueError:
-        msg = "subprocess call failed for generator at {} failed to produce JSON".format()
+        msg = "subprocess call failed for generator at {} failed to produce JSON".format(generator_path)
         raise_preserve_tb(RuntimeError, msg)
 
     if files:
@@ -693,8 +693,8 @@ def get_file_dynamic(generator_path, path):
                                           cwd=gen_script_dir,
                                           stdout=subprocess.PIPE).stdout
 
-    except FileNotFoundError:
-        msg = "subprocess call failed for generator at {}: File not found".format(genertor_path)
+    except IOError:
+        msg = "subprocess call failed for generator at {}: File not found".format(generator_path)
         raise_preserve_tb(RuntimeError, msg)
 
     return generated_file

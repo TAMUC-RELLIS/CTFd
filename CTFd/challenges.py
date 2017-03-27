@@ -80,6 +80,10 @@ def chals():
                         params, files = get_instance_dynamic(chal.generator)
                         if files:
                             update_generated_files(chal.id, files)
+
+                        # Query the DB which now include newly added files and static files
+                        files_query = Files.query.filter_by(chal=chal.id)
+                        files = [str(f.location) for f in files_query.all()]
                     else:
                         params, files = get_instance_static(chal.id)
 

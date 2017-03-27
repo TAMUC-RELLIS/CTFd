@@ -301,6 +301,8 @@ def admin_chals():
                 'category': x.category,
                 'hidden': x.hidden,
                 'instanced': x.instanced,
+                'generated': x.generated,
+                'generator': x.generator,
                 'percentage_solved': percentage
             })
 
