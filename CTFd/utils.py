@@ -646,7 +646,6 @@ def get_instance_dynamic(generator_path):
     gen_script_dir = os.path.dirname(abs_gen_path)
 
     try:
-        print [abs_gen_path, 'config', team.seed]
         output = subprocess.check_output([abs_gen_path, 'config', team.seed], 
                                          cwd=gen_script_dir)
 
