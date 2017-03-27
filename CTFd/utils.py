@@ -19,6 +19,7 @@ import urllib
 import imp
 from types import ModuleType
 from traceback import format_exception_only
+from StringIO import StringIO
 
 from flask import current_app as app, request, redirect, url_for, session, render_template, abort
 from flask_caching import Cache
@@ -645,6 +646,7 @@ def get_instance_dynamic(generator_path):
     gen_script_dir = os.path.dirname(abs_gen_path)
 
     try:
+        print [abs_gen_path, 'config', team.seed]
         output = subprocess.check_output([abs_gen_path, 'config', team.seed], 
                                          cwd=gen_script_dir)
 
@@ -670,6 +672,9 @@ def get_instance_dynamic(generator_path):
         file_path_prefix = os.path.relpath(gen_script_dir, start=gen_folder)
         files = [os.path.normpath(os.path.join(file_path_prefix, file)) for file in files]
 
+        # Add an md5 hash of the path to the front of the path to avoid collisions
+        files = [os.path.join(hashlib.md5(path).hexdigest(), path) for path in files]
+
     return params, files
 
 
@@ -677,27 +682,33 @@ def get_instance_dynamic(generator_path):
 def get_file_dynamic(generator_path, path):
     """
     Call upon the given generator to retrieve the file at the given "path"
-    Returns the file object which for the processes stdout. 
-    The process runs asynchronously after this function has returned
-    Disadvantage to this approach, error in the file generator script cannot be caught here
+    Returns the file object buffered in a StringIO object. 
     """
+
+    # Discard the first piece of the path, which (if generated properly) is simply an anti-collision measure
+    path = '/'.join(path.split('/')[1:])
+
     gen_folder = os.path.join(os.path.normpath(app.root_path), app.config['GENERATOR_FOLDER'])
     team = Teams.query.add_columns('seed').filter_by(id=session.get('id')).first()
     abs_gen_path = os.path.abspath(os.path.join(gen_folder, generator_path))
     gen_script_dir = os.path.dirname(abs_gen_path)
 
-    path_rel = os.path.relpath(abs_gen_path, start=gen_script_dir)
+    path_rel = os.path.relpath(os.path.join(gen_folder, path), start=gen_script_dir)
 
     try:
-        generated_file = subprocess.Popen([abs_gen_path, 'file', team.seed, path_rel], 
-                                          cwd=gen_script_dir,
-                                          stdout=subprocess.PIPE).stdout
+        output = subprocess.check_output([abs_gen_path, 'file', team.seed, path_rel], 
+                                          cwd=gen_script_dir)
 
+    except subprocess.CalledProcessError as e:
+        msg = """subprocess call failed for generator at {} failed with exit code {}
+        Last output:
+        {}""".format(generator_path, e.returncode, e.output)
+        raise_preserve_tb(RuntimeError, msg)
     except IOError:
         msg = "subprocess call failed for generator at {}: File not found".format(generator_path)
         raise_preserve_tb(RuntimeError, msg)
 
-    return generated_file
+    return StringIO(output)
 
 
 def update_generated_files(chalid, files):
