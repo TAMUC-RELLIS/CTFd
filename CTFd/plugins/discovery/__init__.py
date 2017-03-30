@@ -4,7 +4,6 @@ import json
 from socket import inet_aton, inet_ntoa
 from struct import unpack, pack, error as struct_error
 from flask import current_app as app, render_template, request, redirect, jsonify, url_for, Blueprint
-import os
 from passlib.hash import bcrypt_sha256
 from sqlalchemy.sql import not_
 from CTFd.utils import admins_only, is_admin, unix_time, get_config, \
@@ -131,26 +130,26 @@ def load(app):
         discovered = []
         for x in chals:
           show, and_list = 0, []
-          print("Challenge #" + str(x.id) + " - Needed problems solved to be seen:")
+          # print("Challenge #" + str(x.id) + " - Needed problems solved to be seen:")
           for y in DiscoveryList.query.add_columns('id', 'discovery', 'chal').all(): # For each OR set
             if (str(y.chal) == str(x.id) and show != 1):
               and_list = map(int, (y.discovery).split('&'))
-              print("NEEDED: " + str(and_list))
+              # print("NEEDED: " + str(and_list))
               for need_solved in and_list: # For each AND elem
                 show = 2
                 for z in Solves.query.add_columns('chalid').filter_by(teamid=session['id']).all():
                   if need_solved == z.chalid:
                     show = 1 # Chal is solved and is needed
-                    print("Challenge ID: " + str(need_solved) + " has been solved & is needed")
+                    # print("Challenge ID: " + str(need_solved) + " has been solved & is needed")
                     break
                 if (show == 2): #Challenge is not solved and is needed
                   and_list=[] # Mark wrong
                   break
           if ((len(and_list)==0 and show == 0) or show==1):
-            print("Shown, because of:" + str(and_list) + " show:" + str(show) +'\n')
+            # print("Shown, because of:" + str(and_list) + " show:" + str(show) +'\n')
             discovered.append(x)
-          else:
-            print("HIDDEN, solved:" + str(and_list) + " show:" + str(show) +'\n')
+          # else:
+            # print("HIDDEN, solved:" + str(and_list) + " show:" + str(show) +'\n')
         return discovered 
     
     app.view_functions['challenges.chals'] = chals
