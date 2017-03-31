@@ -4,6 +4,29 @@
 {% endblock %}
 
 {% block content %}
+<style>
+.alert {
+    padding: 20px;
+    background-color: #c80000;
+    color: white;
+}
+
+.closebtn {
+    margin-left: 15px;
+    color: white;
+    font-weight: bold;
+    float: right;
+    font-size: 22px;
+    line-height: 20px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.closebtn:hover {
+    color: black;
+}
+</style>
+
 <div class="jumbotron home">
     <div class="container">
         <h1>Register</h1>
@@ -59,7 +82,12 @@
             </form>
         </div>
     </div>
+    <div class="alert" style="margin-top: 20px;">
+      <span class="closebtn" onclick="this.parentElement.style.display='none';">&times;</span> 
+      <strong>By registering, you agree to our <a href="https://tamuctf.github.io/tos.html" target="_blank" style="color: #87CC8A;">Terms of Service</a></strong>
+    </div>
 </div>
+
 {% endblock %}
 
 {% block scripts %}
