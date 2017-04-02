@@ -260,8 +260,8 @@ def chal(chalid):
                     instance_log.exception("instancing error during key "
                                            "submission in challenge #{0.id} "
                                            "({0.name})".format(chal))
-                    logger.exception("[{0}] {1} submitted {2} with kpm {3}"
-                                     " [INSTANCE_ERROR]".format(*data))
+                    #logger.exception("[{0}] {1} submitted {2} with kpm {3}"
+                    #                 " [INSTANCE_ERROR]".format(*data))
                     return '-1'
 
             for x in keys:
