@@ -257,4 +257,7 @@ def file_handler(path):
                 else:
                     abort(403)
     upload_folder = os.path.join(app.root_path, app.config['UPLOAD_FOLDER'])
-    return send_file(os.path.join(upload_folder, f.location))
+    file_location = os.path.join(upload_folder, f.location)
+    if not os.path.exists(file_location):
+        abort(404)
+    return send_file(file_location)
