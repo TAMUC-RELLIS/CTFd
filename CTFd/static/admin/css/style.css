@@ -366,10 +366,10 @@ table{
 }
 
 /* saf3+, chrome1+ */
-@media screen and (-webkit-min-device-pixel-ratio:0) {
+/*@media screen and (-webkit-min-device-pixel-ratio:0) {
     body .gform_wrapper .left_label #recaptcha_widget_div,
     body .gform_wrapper .right_label #recaptcha_widget_div {margin-left:32%;}
-}
+}*/
 
 
 #submit {
