@@ -359,6 +359,12 @@ table{
     display: none;
 }
 
+/* ADDED THIS */
+.g-recaptcha{
+    position: relative;
+    left: -15px
+}
+
 #submit {
     position: relative;
     right: -15px;
