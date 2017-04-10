@@ -366,7 +366,7 @@ table{
 }
 
 #submit {
-    position: left;
+    position: relative;
     right: -15px;
 }
 
