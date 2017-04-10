@@ -359,12 +359,6 @@ table{
     display: none;
 }
 
-/* ADDED THIS */
-.g-recaptcha{
-    position: relative;
-    left: -15px
-}
-
 /* saf3+, chrome1+ */
 /*@media screen and (-webkit-min-device-pixel-ratio:0) {
     body .gform_wrapper .left_label #recaptcha_widget_div,
