@@ -63,7 +63,9 @@
                     </span>
                     </div>
                 </div>
-                <div class="row">
+
+                <!-- Removed University classification -->
+                <!-- <div class="row">
                     <div class="col-md-12">
                         <span class="input">
                             <select id="dropdown-field" name="classification" id="input-10">
@@ -79,7 +81,8 @@
                             </label>
                         </span>
                     </div>
-                </div>
+                </div> -->
+
                 <div class="row">
                     <div class="col-md-12">
                         <span class="input">
@@ -90,13 +93,15 @@
                     </span>
                     </div>
                 </div>
+
                 <div class="done-row row">
                     <div class="col-md-6 col-md-offset-6" style="margin-top:10px">
                         <button type="submit" id="submit" tabindex="5" class="btn btn-md btn-theme btn-outlined pull-right">Submit</button>
                     </div>
                 </div>
-                <input type="hidden" name="nonce" value="{{ nonce }}">
+				<!-- Google reCAPTCHA widget -->
                 <div class="g-recaptcha" data-sitekey="6Ld4ORwUAAAAAJiStwc-KVivm-1K0rstRHJF9ppZ"></div>
+                <input type="hidden" name="nonce" value="{{ nonce }}">
             </form>
         </div>
     </div>
