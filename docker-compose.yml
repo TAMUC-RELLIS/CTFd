@@ -4,8 +4,8 @@ services:
   ctfd:
     build: .
     restart: always
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     environment:
       - DATABASE_URL=mysql+pymysql://root@db/ctfd
     volumes:
@@ -15,7 +15,7 @@ services:
       - db
 
   db:
-    image: mysql
+    image: liupeng0518/mysql:5.7-arm64
     environment:
       - MYSQL_ALLOW_EMPTY_PASSWORD=yes
     volumes:
